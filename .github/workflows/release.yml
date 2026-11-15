@@ -111,19 +111,17 @@ jobs:
           Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
 
           # Generate SHA256SUMS.txt
-          Push-Location $distDir
-          try {
-              $checksumLines = Get-ChildItem -File -Include *.msi, *.zip | Sort-Object Name | ForEach-Object {
-                  $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-                  "$hash  $($_.Name)"
-              }
-              $checksumLines | Set-Content -Path "SHA256SUMS.txt" -Encoding UTF8
-              Write-Host "=== Generated SHA256SUMS.txt ===" -ForegroundColor Green
-              Get-Content "SHA256SUMS.txt"
+          $checksumLines = @(Get-ChildItem -Path "$distDir\*" -File -Include *.msi, *.zip | Sort-Object Name | ForEach-Object {
+              $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+          })
+          if ($checksumLines.Count -eq 0) {
+              throw "No .msi or .zip files found in $distDir"
           }
-          finally {
-              Pop-Location
-          }
+          $checksumPath = Join-Path $distDir "SHA256SUMS.txt"
+          $checksumLines | Set-Content -Path $checksumPath -Encoding UTF8
+          Write-Host "=== Generated SHA256SUMS.txt ===" -ForegroundColor Green
+          Get-Content $checksumPath
 
           # Generate Release Notes file
           $msiFile = "Mnshor-${{ steps.meta.outputs.artifact_suffix }}.msi"
