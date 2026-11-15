@@ -80,6 +80,7 @@ jobs:
         run: |
           dotnet tool update --global wix
           wix --version
+          wix eula accept wix7
           wix extension add -g WixToolset.UI.wixext
 
       - name: Run Tests, Publish & Build MSI Installer
