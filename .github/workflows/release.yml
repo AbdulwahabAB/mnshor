@@ -1,0 +1,168 @@
+name: Release (MSI & Portable)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (X.Y.Z format, e.g. 0.1.0)'
+        required: true
+        default: '0.1.0'
+        type: string
+      stage:
+        description: 'Release stage'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - alpha
+          - preview
+          - beta
+          - rc
+          - stable
+      publish_release:
+        description: 'Create/Update a public GitHub Release for this build'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Windows x64 MSI & Portable Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Resolve Version, Stage & Tag Metadata
+        id: meta
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+              $ver = "${{ inputs.version }}".TrimStart('v')
+              $stage = "${{ inputs.stage }}"
+              $tag = if ($stage -eq "stable") { "v$ver" } else { "v$ver-$stage" }
+          } else {
+              $tag = "${{ github.ref_name }}"
+              if ($tag -match '^v?(?<ver>\d+\.\d+\.\d+)(?:-(?<stage>alpha|preview|beta|rc))?') {
+                  $ver = $Matches['ver']
+                  $stage = if ($Matches['stage']) { $Matches['stage'] } else { "stable" }
+              } else {
+                  throw "Tag '$tag' does not match expected format vX.Y.Z or vX.Y.Z-(alpha|preview|beta|rc)."
+              }
+          }
+
+          $isPrerelease = if ($stage -eq "stable") { "false" } else { "true" }
+          $artifactSuffix = if ($stage -eq "stable") { "$ver-win-x64" } else { "$ver-$stage-win-x64" }
+          $releaseTitle = if ($stage -eq "stable") { "Mnshor v$ver" } else { "Mnshor v$ver ($stage)" }
+
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "stage=$stage" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "prerelease=$isPrerelease" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "artifact_suffix=$artifactSuffix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "release_title=$releaseTitle" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          Write-Host "Resolved Version: $ver | Stage: $stage | Tag: $tag | Prerelease: $isPrerelease" -ForegroundColor Cyan
+
+      - name: Install WiX Toolset & UI Extension
+        shell: pwsh
+        run: |
+          dotnet tool update --global wix
+          wix --version
+          wix extension add -g WixToolset.UI.wixext
+
+      - name: Run Tests, Publish & Build MSI Installer
+        shell: pwsh
+        run: |
+          .\installer\build-msi.ps1 -Version "${{ steps.meta.outputs.version }}" -Stage "${{ steps.meta.outputs.stage }}"
+
+      - name: Package Portable ZIP & Generate SHA-256 Checksums
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $distDir = Join-Path $root "dist"
+          $publishAppDir = Join-Path $root "installer\Mnshor.Installer\obj\publish\app"
+          $publishLauncherDir = Join-Path $root "installer\Mnshor.Installer\obj\publish\launcher"
+          $stagingDir = Join-Path $root "installer\Mnshor.Installer\obj\publish\portable-staging"
+
+          if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
+
+          Copy-Item -Path "$publishAppDir\*" -Destination $stagingDir -Recurse -Force
+          Copy-Item -Path "$publishLauncherDir\Mnshor.Launcher.exe" -Destination $stagingDir -Force
+          Copy-Item -Path (Join-Path $root "LICENSE") -Destination $stagingDir -Force
+          Copy-Item -Path (Join-Path $root "README.md") -Destination $stagingDir -Force
+          Copy-Item -Path (Join-Path $root "README.ar.md") -Destination $stagingDir -Force
+
+          $zipName = "Mnshor-${{ steps.meta.outputs.artifact_suffix }}-portable.zip"
+          $zipPath = Join-Path $distDir $zipName
+          Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
+
+          # Generate SHA256SUMS.txt
+          Push-Location $distDir
+          try {
+              $checksumLines = Get-ChildItem -File -Include *.msi, *.zip | Sort-Object Name | ForEach-Object {
+                  $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+                  "$hash  $($_.Name)"
+              }
+              $checksumLines | Set-Content -Path "SHA256SUMS.txt" -Encoding UTF8
+              Write-Host "=== Generated SHA256SUMS.txt ===" -ForegroundColor Green
+              Get-Content "SHA256SUMS.txt"
+          }
+          finally {
+              Pop-Location
+          }
+
+          # Generate Release Notes file
+          $msiFile = "Mnshor-${{ steps.meta.outputs.artifact_suffix }}.msi"
+          $notesPath = Join-Path $root "installer\Mnshor.Installer\obj\RELEASE_NOTES.md"
+          $notes = @(
+              "## ${{ steps.meta.outputs.release_title }} — مَنشُور",
+              "",
+              "**100% Local-First, In-Memory PDF & Document Processing Suite** | **محطة معالجة المستندات وملفات الـ PDF المحلية 100% في الذاكرة**",
+              "",
+              "### 📦 Downloads / التحميل",
+              "- **Windows Installer (Recommended)**: ``$msiFile`` — Installs Mnshor to Program Files, registers ``MnshorService`` on ``http://127.0.0.1:5157``, and creates Desktop & Start Menu shortcuts.",
+              "- **Portable Archive (No Install)**: ``$zipName`` — Extract anywhere and run ``Mnshor.Launcher.exe`` (or ``Mnshor.exe``).",
+              "",
+              "### 🔒 SHA-256 Checksums",
+              '```text',
+              ($checksumLines -join "`n"),
+              '```'
+          ) -join "`n"
+          $notes | Set-Content -Path $notesPath -Encoding UTF8
+
+      - name: Upload Build Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mnshor-${{ steps.meta.outputs.artifact_suffix }}
+          path: |
+            dist/*.msi
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Create or Update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.release_title }}
+          body_path: installer/Mnshor.Installer/obj/RELEASE_NOTES.md
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            dist/*.msi
+            dist/*.zip
+            dist/SHA256SUMS.txt
