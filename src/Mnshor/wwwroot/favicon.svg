@@ -1,0 +1,65 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <clipPath id="squircle-fav">
+            <rect x="6" y="6" width="108" height="108" rx="26" />
+        </clipPath>
+        <linearGradient id="frameGrad-fav" x1="60" y1="6" x2="60" y2="114" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#8B5A3C" />
+            <stop offset="50%" stop-color="#5E3822" />
+            <stop offset="100%" stop-color="#3F2313" />
+        </linearGradient>
+        <linearGradient id="parchmentWell-fav" x1="60" y1="14" x2="60" y2="106" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FAF4E8" />
+            <stop offset="65%" stop-color="#EFE5D0" />
+            <stop offset="100%" stop-color="#DFCEB2" />
+        </linearGradient>
+        <linearGradient id="goldTrim-fav" x1="14" y1="14" x2="106" y2="106" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#F6D58E" />
+            <stop offset="50%" stop-color="#D4A359" />
+            <stop offset="100%" stop-color="#9A6D30" />
+        </linearGradient>
+        <linearGradient id="pageFront-fav" x1="56" y1="30" x2="56" y2="94" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="100%" stop-color="#F7F0E2" />
+        </linearGradient>
+        <linearGradient id="innerBevel-fav" x1="60" y1="6" x2="60" y2="114" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFDF8" stop-opacity="0.5" />
+            <stop offset="35%" stop-color="#FFFDF8" stop-opacity="0.1" />
+            <stop offset="100%" stop-color="#241208" stop-opacity="0.3" />
+        </linearGradient>
+    </defs>
+
+    <g clip-path="url(#squircle-fav)">
+        <rect x="6" y="6" width="108" height="108" fill="url(#frameGrad-fav)" />
+        <rect x="13" y="13" width="94" height="94" rx="20" fill="url(#parchmentWell-fav)" stroke="url(#goldTrim-fav)" stroke-width="2" />
+
+        <rect x="76" y="34" width="17" height="11" rx="3" fill="#E04F3E" stroke="#7A281E" stroke-width="1" />
+        <rect x="76" y="47" width="19" height="11" rx="3" fill="#F2A93B" stroke="#8C5D16" stroke-width="1" />
+        <rect x="76" y="60" width="17" height="11" rx="3" fill="#3CA374" stroke="#1E5E41" stroke-width="1" />
+        <rect x="76" y="73" width="15" height="11" rx="3" fill="#2E78D2" stroke="#1A4880" stroke-width="1" />
+
+        <g transform="rotate(-6 55 62)">
+            <rect x="28" y="30" width="52" height="64" rx="6" fill="#EDE3CF" stroke="#9C8265" stroke-width="1.5" />
+        </g>
+
+        <path d="M 38 28 H 69 L 83 42 V 88 A 6 6 0 0 1 77 94 H 38 A 6 6 0 0 1 32 88 V 34 A 6 6 0 0 1 38 28 Z"
+              fill="url(#pageFront-fav)"
+              stroke="#6D4C36"
+              stroke-width="2"
+              stroke-linejoin="round" />
+
+        <path d="M 69 28 V 37.5 A 4.5 4.5 0 0 0 73.5 42 H 83 L 69 28 Z"
+              fill="#E4D4B8"
+              stroke="#6D4C36"
+              stroke-width="1.8"
+              stroke-linejoin="round" />
+
+        <rect x="41" y="43" width="22" height="3.8" rx="1.9" fill="#6D4C36" fill-opacity="0.85" />
+        <rect x="41" y="53" width="33" height="3.6" rx="1.8" fill="#8B7059" fill-opacity="0.65" />
+        <rect x="41" y="62" width="29" height="3.6" rx="1.8" fill="#8B7059" fill-opacity="0.55" />
+        <rect x="41" y="71" width="22" height="3.6" rx="1.8" fill="#8B7059" fill-opacity="0.48" />
+    </g>
+
+    <rect x="6" y="6" width="108" height="108" rx="26" stroke="#331B0E" stroke-width="2.5" />
+    <rect x="7.5" y="7.5" width="105" height="105" rx="24.5" stroke="url(#innerBevel-fav)" stroke-width="1.5" />
+</svg>

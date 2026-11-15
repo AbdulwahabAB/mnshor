@@ -1,0 +1,116 @@
+@* Original "Old But Gold" Mnshor Logo — Tactile Archival Squircle + Prism-Tabbed File Stack *@
+<svg width="@Size"
+     height="@Size"
+     viewBox="0 0 120 120"
+     fill="none"
+     xmlns="http://www.w3.org/2000/svg"
+     class="mnshor-logo-svg @(Animated ? "mnshor-logo-animated" : "") @Class"
+     role="img"
+     aria-label="Mnshor Logo">
+    <defs>
+        <clipPath id="squircle-@_uid">
+            <rect x="6" y="6" width="108" height="108" rx="26" />
+        </clipPath>
+
+        <!-- Rich warm espresso-bronze outer frame -->
+        <linearGradient id="frameGrad-@_uid" x1="60" y1="6" x2="60" y2="114" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#8B5A3C" />
+            <stop offset="50%" stop-color="#5E3822" />
+            <stop offset="100%" stop-color="#3F2313" />
+        </linearGradient>
+
+        <!-- Recessed warm cream/parchment inner well -->
+        <linearGradient id="parchmentWell-@_uid" x1="60" y1="14" x2="60" y2="106" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FAF4E8" />
+            <stop offset="65%" stop-color="#EFE5D0" />
+            <stop offset="100%" stop-color="#DFCEB2" />
+        </linearGradient>
+
+        <!-- Brushed vintage gold inner trim -->
+        <linearGradient id="goldTrim-@_uid" x1="14" y1="14" x2="106" y2="106" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#F6D58E" />
+            <stop offset="50%" stop-color="#D4A359" />
+            <stop offset="100%" stop-color="#9A6D30" />
+        </linearGradient>
+
+        <linearGradient id="pageFront-@_uid" x1="56" y1="30" x2="56" y2="94" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="100%" stop-color="#F7F0E2" />
+        </linearGradient>
+
+        <linearGradient id="innerBevel-@_uid" x1="60" y1="6" x2="60" y2="114" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFDF8" stop-opacity="0.5" />
+            <stop offset="35%" stop-color="#FFFDF8" stop-opacity="0.1" />
+            <stop offset="100%" stop-color="#241208" stop-opacity="0.3" />
+        </linearGradient>
+
+        <filter id="fileShadow-@_uid" x="-15%" y="-15%" width="135%" height="135%">
+            <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#3A2011" flood-opacity="0.24" />
+        </filter>
+    </defs>
+
+    <!-- Outer tactile leather-bronze squircle -->
+    <g clip-path="url(#squircle-@_uid)">
+        <rect x="6" y="6" width="108" height="108" fill="url(#frameGrad-@_uid)" />
+
+        <!-- Recessed parchment inner card with subtle gold trim -->
+        <rect x="13" y="13" width="94" height="94" rx="20" fill="url(#parchmentWell-@_uid)" stroke="url(#goldTrim-@_uid)" stroke-width="2" />
+
+        <!-- Subtle top inner shadow inside parchment well -->
+        <rect x="14" y="14" width="92" height="92" rx="19" fill="none" stroke="#5E3822" stroke-opacity="0.14" stroke-width="2" />
+
+        <!-- Stacked Document Pages + Prism File Index Tabs -->
+        <g filter="url(#fileShadow-@_uid)">
+            <!-- Prism-colored file index tabs peeking out from the right edge of the stack -->
+            <rect class="logo-tab logo-tab-1" x="76" y="34" width="17" height="11" rx="3" fill="#E04F3E" stroke="#7A281E" stroke-width="1" />
+            <rect class="logo-tab logo-tab-2" x="76" y="47" width="19" height="11" rx="3" fill="#F2A93B" stroke="#8C5D16" stroke-width="1" />
+            <rect class="logo-tab logo-tab-3" x="76" y="60" width="17" height="11" rx="3" fill="#3CA374" stroke="#1E5E41" stroke-width="1" />
+            <rect class="logo-tab logo-tab-4" x="76" y="73" width="15" height="11" rx="3" fill="#2E78D2" stroke="#1A4880" stroke-width="1" />
+
+            <!-- Back offset document sheet -->
+            <g class="logo-back-page" transform="rotate(-6 55 62)">
+                <rect x="28" y="30" width="52" height="64" rx="6" fill="#EDE3CF" stroke="#9C8265" stroke-width="1.5" />
+            </g>
+
+            <!-- Front crisp document sheet with folded dog-ear corner -->
+            <g class="logo-front-page">
+                <path d="M 38 28 H 69 L 83 42 V 88 A 6 6 0 0 1 77 94 H 38 A 6 6 0 0 1 32 88 V 34 A 6 6 0 0 1 38 28 Z"
+                      fill="url(#pageFront-@_uid)"
+                      stroke="#6D4C36"
+                      stroke-width="1.8"
+                      stroke-linejoin="round" />
+
+                <!-- Folded dog-ear corner -->
+                <path d="M 69 28 V 37.5 A 4.5 4.5 0 0 0 73.5 42 H 83 L 69 28 Z"
+                      fill="#E4D4B8"
+                      stroke="#6D4C36"
+                      stroke-width="1.6"
+                      stroke-linejoin="round" />
+
+                <!-- Document text lines -->
+                <rect x="41" y="43" width="22" height="3.5" rx="1.75" fill="#6D4C36" fill-opacity="0.85" />
+                <rect x="41" y="52" width="33" height="3.2" rx="1.6" fill="#8B7059" fill-opacity="0.65" />
+                <rect x="41" y="60" width="29" height="3.2" rx="1.6" fill="#8B7059" fill-opacity="0.55" />
+                <rect x="41" y="68" width="24" height="3.2" rx="1.6" fill="#8B7059" fill-opacity="0.48" />
+
+                <!-- Small embossed Prism Seal at bottom-left of page -->
+                <g class="logo-prism-seal" transform="translate(41, 76)">
+                    <polygon points="6,0 12,11 0,11" fill="#D4A359" fill-opacity="0.28" stroke="#8C5D16" stroke-width="1.2" stroke-linejoin="round" />
+                    <line x1="6" y1="1.5" x2="6" y2="10.5" stroke="#8C5D16" stroke-width="1" stroke-opacity="0.7" />
+                </g>
+            </g>
+        </g>
+    </g>
+
+    <!-- Outer squircle frame & inner bevel highlight -->
+    <rect x="6" y="6" width="108" height="108" rx="26" stroke="#331B0E" stroke-width="2" />
+    <rect x="7.5" y="7.5" width="105" height="105" rx="24.5" stroke="url(#innerBevel-@_uid)" stroke-width="1.5" />
+</svg>
+
+@code {
+    [Parameter] public int Size { get; set; } = 38;
+    [Parameter] public bool Animated { get; set; } = false;
+    [Parameter] public string? Class { get; set; }
+
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+}

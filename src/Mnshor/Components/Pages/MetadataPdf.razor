@@ -1,0 +1,415 @@
+@page "/metadata"
+@rendermode InteractiveServer
+@inject LocalizationState Loc
+@inject IPdfEngine PdfEngine
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>@Loc["MetadataPdfTitle"] - @Loc["AppName"]</PageTitle>
+
+<a href="/" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="@(Loc.IsRtl ? "transform: rotate(180deg);" : "")">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    <span>@Loc["BackToTools"]</span>
+</a>
+
+<div class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h1 class="panel-title">@Loc["MetadataPdfTitle"]</h1>
+            <p class="panel-desc">@Loc["MetadataPdfDesc"]</p>
+        </div>
+    </div>
+
+    @if (selectedFile == null)
+    {
+        <label class="smart-dropzone">
+            <InputFile class="dropzone-input-overlay" OnChange="OnFileSelected" accept=".pdf" />
+            <div class="dropzone-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+            </div>
+            <div class="dropzone-text">@Loc["DragDropPrompt"]</div>
+            <div class="dropzone-subtext">PDF files only (Max 500 MB)</div>
+        </label>
+    }
+    else
+    {
+        <!-- Document Meta Header -->
+        <div class="file-item" style="margin-bottom: 1.25rem;">
+            <div class="file-info">
+                <div class="file-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div class="file-name">@selectedFile.FileName</div>
+                    <div class="file-meta-badges">
+                        <span class="file-badge">@selectedFile.FormattedSize</span>
+                        <span class="file-badge badge-accent">
+                            @selectedFile.PageCount @Loc["PagesCount"]
+                        </span>
+                        @if (!string.IsNullOrEmpty(metadata.PdfVersion))
+                        {
+                            <span class="file-badge">PDF v@(metadata.PdfVersion)</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="button" class="btn-lang" @onclick="ResetFile" style="color: var(--danger); border-color: var(--danger-border); background: var(--danger-surface);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    <span>@Loc["Remove"]</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- One-Click Privacy Sanitizer Banner -->
+        <div style="margin-bottom: 1.5rem; padding: 1.15rem 1.35rem; background: var(--brand-surface); border: 1px solid var(--brand-border); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.85rem;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: var(--brand-primary); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight: 700; font-size: 0.96rem; color: var(--text-primary);">@Loc["PrivacySanitizerTitle"]</div>
+                    <div style="font-size: 0.84rem; color: var(--text-secondary);">@Loc["PrivacySanitizerDesc"]</div>
+                </div>
+            </div>
+
+            <button type="button" class="btn-primary-action" style="width: auto; padding: 0.6rem 1.35rem; font-size: 0.88rem; background: var(--danger);"
+                    disabled="@isProcessing" @onclick="ExecuteSanitizeAll">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>@Loc["SanitizeNowButton"]</span>
+            </button>
+        </div>
+
+        <!-- Cover Preview + Metadata Form Grid -->
+        <div style="display: grid; grid-template-columns: 230px 1fr; gap: 1.5rem; margin-bottom: 1.5rem; align-items: start;">
+            <!-- Cover Thumbnail Card -->
+            <div id="pdf-thumbnails-grid">
+                <div class="page-thumbnail-card">
+                    <div class="page-card-header">
+                        <span class="page-index-pill">@Loc["Page"] 1</span>
+                        <span class="file-badge">PDF v@(metadata.PdfVersion)</span>
+                    </div>
+                    <div class="preview-canvas-holder" data-pdf-page="1">
+                        <div class="preview-skeleton-pulse">
+                            <svg class="spin-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"></circle>
+                            </svg>
+                            <span>@Loc["LoadingPreviews"]</span>
+                        </div>
+                        <img class="page-thumbnail-canvas" alt="@Loc["Page"] 1" />
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.25rem;">
+                        @if (!string.IsNullOrWhiteSpace(metadata.Producer))
+                        {
+                            <div><strong>@Loc["MetaProducer"]:</strong> @metadata.Producer</div>
+                        }
+                        @if (metadata.CreationDate.HasValue)
+                        {
+                            <div><strong>@Loc["MetaCreationDate"]:</strong> @metadata.CreationDate.Value.ToString("yyyy-MM-dd HH:mm")</div>
+                        }
+                        @if (metadata.ModificationDate.HasValue)
+                        {
+                            <div><strong>@Loc["MetaModDate"]:</strong> @metadata.ModificationDate.Value.ToString("yyyy-MM-dd HH:mm")</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editable Metadata Fields -->
+            <div style="background: var(--bg-page); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button type="button" class="btn-tool-action" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" @onclick="RestoreOriginalFields">
+                        @Loc["RestoreOriginalButton"]
+                    </button>
+                    <button type="button" class="btn-tool-action" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; color: var(--danger);" @onclick="ClearEditableFields">
+                        @Loc["ClearFieldsButton"]
+                    </button>
+                </div>
+
+                <div>
+                    <label style="display: block; font-weight: 600; font-size: 0.86rem; margin-bottom: 0.35rem; color: var(--text-primary);">@Loc["MetaTitle"]</label>
+                    <input type="text" @bind="metadata.Title" class="compact-input" style="width: 100%; padding: 0.58rem 0.85rem; font-weight: 500;" />
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label style="display: block; font-weight: 600; font-size: 0.86rem; margin-bottom: 0.35rem; color: var(--text-primary);">@Loc["MetaAuthor"]</label>
+                        <input type="text" @bind="metadata.Author" class="compact-input" style="width: 100%; padding: 0.58rem 0.85rem; font-weight: 500;" />
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 600; font-size: 0.86rem; margin-bottom: 0.35rem; color: var(--text-primary);">@Loc["MetaCreator"]</label>
+                        <input type="text" @bind="metadata.Creator" class="compact-input" style="width: 100%; padding: 0.58rem 0.85rem; font-weight: 500;" />
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display: block; font-weight: 600; font-size: 0.86rem; margin-bottom: 0.35rem; color: var(--text-primary);">@Loc["MetaSubject"]</label>
+                    <input type="text" @bind="metadata.Subject" class="compact-input" style="width: 100%; padding: 0.58rem 0.85rem; font-weight: 500;" />
+                </div>
+
+                <div>
+                    <label style="display: block; font-weight: 600; font-size: 0.86rem; margin-bottom: 0.35rem; color: var(--text-primary);">@Loc["MetaKeywords"]</label>
+                    <input type="text" @bind="metadata.Keywords" class="compact-input" style="width: 100%; padding: 0.58rem 0.85rem; font-weight: 500;" placeholder="e.g. report, finance, 2026" />
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn-primary-action" disabled="@isProcessing" @onclick="ExecuteSaveMetadata">
+            @if (isProcessing)
+            {
+                <span>@Loc["Processing"]</span>
+            }
+            else
+            {
+                <span>@Loc["SaveMetadataButton"]</span>
+            }
+        </button>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="margin-top: 1.25rem; padding: 0.85rem 1.25rem; background: var(--danger-surface); border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <!-- Result Telemetry -->
+    @if (lastResult != null && lastResult.Success)
+    {
+        <div class="telemetry-card">
+            <div class="telemetry-header">
+                <span style="display: flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>@Loc["MetadataSuccess"]</span>
+                </span>
+                <span class="telemetry-speed">⚡ @lastResult.ElapsedMilliseconds @Loc["Milliseconds"]</span>
+            </div>
+            <div class="telemetry-summary">
+                @lastResult.Summary
+            </div>
+            <div class="telemetry-note">
+                @Loc["ZeroDiskIoNotice"]
+            </div>
+            <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn-primary-action" style="padding: 0.65rem 1.5rem; font-size: 0.92rem; width: auto;" @onclick="DownloadAgain">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>@Loc["DownloadResult"] (@lastResult.OutputFileName)</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DocumentItem? selectedFile;
+    private PdfMetadataModel metadata = new();
+    private PdfMetadataModel originalMetadata = new();
+    private bool isProcessing = false;
+    private string? errorMessage;
+    private ExecutionResult? lastResult;
+    private bool needsThumbnailInit = false;
+
+    protected override void OnInitialized()
+    {
+        Loc.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (needsThumbnailInit && selectedFile?.Data != null)
+        {
+            needsThumbnailInit = false;
+            try
+            {
+                await JS.InvokeVoidAsync("mnshor.initLazyPdfPreview", "pdf-thumbnails-grid", selectedFile.Data);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cover thumbnail init notice: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        lastResult = null;
+        var file = e.File;
+
+        if (!file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Please select a valid PDF file.";
+            return;
+        }
+
+        try
+        {
+            using var memoryStream = new MemoryStream();
+            using var stream = file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024);
+            await stream.CopyToAsync(memoryStream);
+            var data = memoryStream.ToArray();
+
+            int pages = PdfEngine.GetPageCount(data);
+
+            selectedFile = new DocumentItem
+            {
+                FileName = file.Name,
+                ContentType = file.ContentType,
+                Size = file.Size,
+                PageCount = pages,
+                Data = data
+            };
+
+            originalMetadata = PdfEngine.GetMetadata(data);
+            RestoreOriginalFields();
+            needsThumbnailInit = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading {file.Name}: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearEditableFields()
+    {
+        metadata.ClearEditableFields();
+    }
+
+    private void RestoreOriginalFields()
+    {
+        metadata = new PdfMetadataModel
+        {
+            Title = originalMetadata.Title,
+            Author = originalMetadata.Author,
+            Subject = originalMetadata.Subject,
+            Keywords = originalMetadata.Keywords,
+            Creator = originalMetadata.Creator,
+            Producer = originalMetadata.Producer,
+            CreationDate = originalMetadata.CreationDate,
+            ModificationDate = originalMetadata.ModificationDate,
+            PdfVersion = originalMetadata.PdfVersion
+        };
+    }
+
+    private void ResetFile()
+    {
+        selectedFile = null;
+        metadata = new();
+        originalMetadata = new();
+        lastResult = null;
+        errorMessage = null;
+        needsThumbnailInit = false;
+        _ = JS.InvokeVoidAsync("mnshor.disposePdfPreview");
+    }
+
+    private async Task ExecuteSaveMetadata()
+    {
+        if (selectedFile == null) return;
+
+        errorMessage = null;
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await PdfEngine.UpdateMetadataAsync(selectedFile, metadata, sanitizeAll: false);
+            if (lastResult.Success)
+            {
+                await DownloadResult(lastResult);
+            }
+            else
+            {
+                errorMessage = lastResult.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExecuteSanitizeAll()
+    {
+        if (selectedFile == null) return;
+
+        metadata.ClearEditableFields();
+        errorMessage = null;
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await PdfEngine.UpdateMetadataAsync(selectedFile, metadata, sanitizeAll: true);
+            if (lastResult.Success)
+            {
+                await DownloadResult(lastResult);
+            }
+            else
+            {
+                errorMessage = lastResult.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadAgain()
+    {
+        if (lastResult != null && lastResult.Success)
+        {
+            await DownloadResult(lastResult);
+        }
+    }
+
+    private async Task DownloadResult(ExecutionResult result)
+    {
+        await JS.InvokeVoidAsync("mnshor.downloadFileFromByteArray", result.OutputFileName, result.ContentType, result.OutputData);
+    }
+
+    public void Dispose()
+    {
+        Loc.OnChange -= StateHasChanged;
+    }
+}

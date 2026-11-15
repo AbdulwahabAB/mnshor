@@ -1,0 +1,96 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="$(var.ProductName)"
+           Manufacturer="Mnshor"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="8E9A3F4B-7C1D-4F2A-9B5E-6D4C2A1F0E8B"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Mnshor is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="MnshorIcon" SourceFile="Assets\Mnshor.ico" />
+    <Property Id="ARPPRODUCTICON" Value="MnshorIcon" />
+
+    <WixVariable Id="WixUIDialogBmp" Value="Assets\dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="Assets\banner.bmp" />
+    <WixVariable Id="WixUILicenseRtf" Value="Assets\License.rtf" />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <ui:WixUI Id="WixUI_InstallDir" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Mnshor" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Mnshor" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="MnshorComponents">
+      <Component Id="MnshorServiceComponent" Directory="INSTALLFOLDER" Bitness="always64">
+        <File Id="MnshorExe" Source="$(var.PublishDir)\Mnshor.exe" KeyPath="yes" />
+        <ServiceInstall Id="MnshorServiceInstall"
+                        Name="MnshorService"
+                        DisplayName="Mnshor Local Document Suite"
+                        Description="Runs the Mnshor local PDF and document processing web application on http://localhost:5157."
+                        Type="ownProcess"
+                        Start="auto"
+                        Account="NT AUTHORITY\LocalService"
+                        ErrorControl="normal" />
+        <ServiceControl Id="MnshorServiceControl"
+                        Name="MnshorService"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+
+      <Component Id="MnshorLauncherComponent" Directory="INSTALLFOLDER" Bitness="always64">
+        <File Id="MnshorLauncherExe" Source="$(var.LauncherDir)\Mnshor.Launcher.exe" KeyPath="yes" />
+      </Component>
+
+      <Files Directory="INSTALLFOLDER" Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\Mnshor.exe" />
+      </Files>
+
+      <Component Id="DesktopShortcutComponent" Directory="DesktopFolder">
+        <Shortcut Id="DesktopShortcut"
+                  Name="Mnshor"
+                  Description="Open Mnshor Local Document Suite"
+                  Target="[INSTALLFOLDER]Mnshor.Launcher.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="MnshorIcon" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Mnshor"
+                       Name="DesktopShortcutInstalled"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+      <Component Id="StartMenuShortcutComponent" Directory="ApplicationProgramsFolder">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="Mnshor"
+                  Description="Open Mnshor Local Document Suite"
+                  Target="[INSTALLFOLDER]Mnshor.Launcher.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="MnshorIcon" />
+        <RemoveFolder Id="CleanUpStartMenuFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Mnshor"
+                       Name="StartMenuShortcutInstalled"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="ProductFeature" Title="Mnshor" Level="1">
+      <ComponentGroupRef Id="MnshorComponents" />
+    </Feature>
+  </Package>
+</Wix>

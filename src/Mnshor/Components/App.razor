@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mnshor | منشور - Local PDF & Document Suite</title>
+    <base href="/" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="css/prism-theme.css?v=4" />
+    @if (IsDebugBuild)
+    {
+        <link rel="stylesheet" href="css/promo-motion.css?v=1" />
+    }
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="js/pdf.min.js"></script>
+    <script src="js/mnshor.js?v=4"></script>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>
+
+@code {
+#if DEBUG
+    private static readonly bool IsDebugBuild = true;
+#else
+    private static readonly bool IsDebugBuild = false;
+#endif
+}

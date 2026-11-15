@@ -1,0 +1,233 @@
+@page "/word-to-pdf"
+@rendermode InteractiveServer
+@inject LocalizationState Loc
+@inject IWordConverter WordConverter
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>@Loc["WordToPdfTitle"] - @Loc["AppName"]</PageTitle>
+
+<a href="/" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="@(Loc.IsRtl ? "transform: rotate(180deg);" : "")">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    <span>@Loc["BackToTools"]</span>
+</a>
+
+<div class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h1 class="panel-title">@Loc["WordToPdfTitle"]</h1>
+            <p class="panel-desc">@Loc["WordToPdfDesc"]</p>
+        </div>
+    </div>
+
+    @if (selectedFile == null)
+    {
+        <label class="smart-dropzone">
+            <InputFile class="dropzone-input-overlay" OnChange="OnFileSelected" accept=".docx" />
+            <div class="dropzone-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+            </div>
+            <div class="dropzone-text">@Loc["SelectDocxPrompt"]</div>
+            <div class="dropzone-subtext">Microsoft Word documents (.docx) - Max 500 MB</div>
+        </label>
+    }
+    else
+    {
+        <div class="file-item" style="margin-bottom: 1.5rem;">
+            <div class="file-info">
+                <div class="file-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div class="file-name">@selectedFile.FileName</div>
+                    <div class="file-meta-badges">
+                        <span class="file-badge">@selectedFile.FormattedSize</span>
+                        <span class="file-badge badge-accent">
+                            Microsoft Word DOCX
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="button" class="btn-lang" @onclick="ResetFile" style="color: var(--danger); border-color: var(--danger-border); background: var(--danger-surface);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    <span>@Loc["Remove"]</span>
+                </button>
+            </div>
+        </div>
+
+        <button type="button" class="btn-primary-action" disabled="@isProcessing" @onclick="ExecuteConversion">
+            @if (isProcessing)
+            {
+                <span>@Loc["Processing"]</span>
+            }
+            else
+            {
+                <span>@Loc["ConvertWordButton"]</span>
+            }
+        </button>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="margin-top: 1.25rem; padding: 0.85rem 1.25rem; background: var(--danger-surface); border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <!-- Result Telemetry -->
+    @if (lastResult != null && lastResult.Success)
+    {
+        <div class="telemetry-card">
+            <div class="telemetry-header">
+                <span style="display: flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>@Loc["WordSuccess"]</span>
+                </span>
+                <span class="telemetry-speed">⚡ @lastResult.ElapsedMilliseconds @Loc["Milliseconds"]</span>
+            </div>
+            <div class="telemetry-summary">
+                @lastResult.Summary
+            </div>
+            <div class="telemetry-note">
+                @Loc["ZeroDiskIoNotice"]
+            </div>
+            <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn-primary-action" style="padding: 0.65rem 1.5rem; font-size: 0.92rem; width: auto;" @onclick="DownloadAgain">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>@Loc["DownloadResult"] (@lastResult.OutputFileName)</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DocumentItem? selectedFile;
+    private bool isProcessing = false;
+    private string? errorMessage;
+    private ExecutionResult? lastResult;
+
+    protected override void OnInitialized()
+    {
+        Loc.OnChange += StateHasChanged;
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        lastResult = null;
+        var file = e.File;
+
+        if (!file.Name.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Please select a valid Word (.docx) file.";
+            return;
+        }
+
+        try
+        {
+            using var memoryStream = new MemoryStream();
+            using var stream = file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024);
+            await stream.CopyToAsync(memoryStream);
+            var data = memoryStream.ToArray();
+
+            selectedFile = new DocumentItem
+            {
+                FileName = file.Name,
+                ContentType = file.ContentType,
+                Size = file.Size,
+                Data = data
+            };
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading {file.Name}: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void ResetFile()
+    {
+        selectedFile = null;
+        lastResult = null;
+        errorMessage = null;
+    }
+
+    private async Task ExecuteConversion()
+    {
+        if (selectedFile == null) return;
+
+        errorMessage = null;
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await WordConverter.ConvertToPdfAsync(selectedFile);
+            if (lastResult.Success)
+            {
+                await DownloadResult(lastResult);
+            }
+            else
+            {
+                errorMessage = lastResult.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadAgain()
+    {
+        if (lastResult != null && lastResult.Success)
+        {
+            await DownloadResult(lastResult);
+        }
+    }
+
+    private async Task DownloadResult(ExecutionResult result)
+    {
+        await JS.InvokeVoidAsync("mnshor.downloadFileFromByteArray", result.OutputFileName, result.ContentType, result.OutputData);
+    }
+
+    public void Dispose()
+    {
+        Loc.OnChange -= StateHasChanged;
+    }
+}

@@ -1,0 +1,254 @@
+namespace Mnshor.Services;
+
+public static class TranslationDictionary
+{
+    private static readonly Dictionary<string, (string Ar, string En)> Strings = new()
+    {
+        // Brand & Header
+        ["AppName"] = ("مَنشُور", "Mnshor"),
+        ["AppTagline"] = ("محطة معالجة المستندات والـ PDF فائقة السرعة والمحلية 100%", "High-Speed, 100% Local-First PDF & Document Processing Suite"),
+        ["SecurityBadge"] = ("معالجة محلية في الذاكرة | أمان تام", "100% In-Memory Processing | Secure"),
+        ["SwitchLanguage"] = ("English", "العربية"),
+        ["ThemeToggle"] = ("تبديل المظهر", "Toggle Theme"),
+        ["Home"] = ("الرئيسية", "Home"),
+
+        // Tools
+        ["MergePdfTitle"] = ("دمج ملفات PDF", "Merge PDF Files"),
+        ["MergePdfDesc"] = ("دمج عدة ملفات PDF في مستند واحد عالي الدقة داخل جهازك.", "Combine multiple PDF documents into a single document locally."),
+        
+        ["SplitPdfTitle"] = ("تقسيم واستخراج PDF", "Split & Extract PDF"),
+        ["SplitPdfDesc"] = ("استخراج صفحات محددة بدقة أو فصل المستند بالكامل إلى صفحات مستقلة.", "Extract specific page ranges or burst the document into individual pages."),
+        
+        ["RotatePdfTitle"] = ("تدوير صفحات PDF", "Rotate PDF Pages"),
+        ["RotatePdfDesc"] = ("تدوير جميع الصفحات أو صفحات محددة بزاوية 90 أو 180 أو 270 درجة محلياً داخل جهازك.", "Rotate all or specific PDF pages by 90°, 180°, or 270° locally in memory."),
+
+        ["RemovePagesTitle"] = ("حذف صفحات من PDF", "Remove PDF Pages"),
+        ["RemovePagesDesc"] = ("حذف صفحات محددة بصرياً أو عبر تحديد نطاق وتنزيل الملف الجديد محلياً وفورياً.", "Delete specific pages visually or via page range and download the cleaned PDF locally."),
+
+        ["ReorderPdfTitle"] = ("إعادة ترتيب وعكس PDF", "Reorder & Reverse PDF"),
+        ["ReorderPdfDesc"] = ("إعادة ترتيب صفحات المستند بصرياً أو عكس ترتيبها بالكامل بنقرة واحدة محلياً.", "Rearrange PDF pages visually with one click or reverse the complete page sequence locally."),
+
+        ["MetadataPdfTitle"] = ("محرر البيانات الوصفية ومنظف الخصوصية", "PDF Metadata & Privacy Sanitizer"),
+        ["MetadataPdfDesc"] = ("عرض وتعديل بيانات مستند PDF (العنوان، المؤلف، الكلمات المفتاحية) أو مسحها بالكامل لحماية الخصوصية.", "Inspect, edit, or completely strip hidden PDF metadata (Title, Author, Keywords, Creator) for privacy."),
+
+        ["WatermarkPdfTitle"] = ("إضافة علامة مائية إلى PDF", "Watermark PDF"),
+        ["WatermarkPdfDesc"] = ("إضافة نص شفاف (مثل: سري للغاية / مسودة) أو شعار مصور إلى صفحات مستند PDF مع تحكم كامل بالموضع والزاوية والشفافية.", "Stamp custom text or an image logo over or below your PDF pages with live preview, 9-grid positioning, mosaic tiling, and transparency."),
+
+        ["WordToPdfTitle"] = ("تحويل Word إلى PDF", "Word to PDF Converter"),
+        ["WordToPdfDesc"] = ("تحويل مستندات Word (DOCX) إلى ملفات PDF منسقة ومطبوعة محلياً داخل جهازك.", "Convert Word (DOCX) documents into clean, printable PDF documents locally."),
+
+        // Common Actions
+        ["DragDropPrompt"] = ("اسحب وأفلت الملفات هنا، أو انقر للاختيار من جهازك", "Drag & drop files here, or click to browse"),
+        ["DropFilesHere"] = ("أفلت الملفات الآن", "Drop files now"),
+        ["SelectFiles"] = ("اختيار ملفات", "Choose Files"),
+        ["ClearAll"] = ("إفراغ القائمة", "Clear All"),
+        ["Remove"] = ("حذف", "Remove"),
+        ["MoveUp"] = ("للأعلى", "Move Up"),
+        ["MoveDown"] = ("للأسفل", "Move Down"),
+        ["Processing"] = ("جارٍ المعالجة في الذاكرة...", "Processing in memory..."),
+        ["DownloadResult"] = ("تنزيل المستند", "Download File"),
+        ["BackToTools"] = ("العودة إلى الأدوات", "Back to Tools"),
+        ["PagesCount"] = ("صفحة", "pages"),
+        ["TotalFiles"] = ("إجمالي الملفات", "Total Files"),
+        ["TotalPages"] = ("إجمالي الصفحات", "Total Pages"),
+
+        // Merge Specific
+        ["MergeButton"] = ("دمج الملفات", "Merge Files"),
+        ["MergeSuccess"] = ("تم دمج المستندات بنجاح في الذاكرة", "Documents merged successfully in memory"),
+        ["AtLeastTwoFiles"] = ("يرجى إضافة ملفين على الأقل للدمج.", "Please add at least two files to merge."),
+
+        // Split Specific
+        ["SplitModeRange"] = ("استخراج نطاق صفحات محدد", "Extract Custom Page Range"),
+        ["SplitModeBurst"] = ("فصل كل صفحة في ملف مستقل (ZIP)", "Burst All Pages into Single Files (ZIP)"),
+        ["RangePlaceholder"] = ("مثال: 1-3, 5, 8-10", "e.g. 1-3, 5, 8-10"),
+        ["RangeLabel"] = ("نطاق الصفحات المطلوب:", "Requested Page Range:"),
+        ["SplitButton"] = ("تقسيم المستند", "Split Document"),
+        ["SplitSuccess"] = ("تم تقسيم المستند بنجاح", "Document split successfully"),
+        ["InvalidRange"] = ("صيغة النطاق غير صالحة. استخدم أرقاماً مثل: 1-3, 5", "Invalid range format. Use numbers like: 1-3, 5"),
+
+        // Rotate Specific
+        ["RotationAngle"] = ("زاوية التدوير:", "Rotation Angle:"),
+        ["Rotate90Right"] = ("90° لليمين (مع عقارب الساعة)", "90° Clockwise (Right)"),
+        ["Rotate180"] = ("180° (رأساً على عقب)", "180° Flip"),
+        ["Rotate90Left"] = ("90° لليسار (عكس عقارب الساعة)", "90° Counter-Clockwise (Left)"),
+        ["RotateScope"] = ("الصفحات المستهدفة للتدوير:", "Pages to Rotate:"),
+        ["ScopeAll"] = ("جميع صفحات المستند", "All Pages"),
+        ["ScopeOdd"] = ("الصفحات الفردية فقط (1, 3, 5...)", "Odd Pages Only (1, 3, 5...)"),
+        ["ScopeEven"] = ("الصفحات الزوجية فقط (2, 4, 6...)", "Even Pages Only (2, 4, 6...)"),
+        ["ScopeCustom"] = ("نطاق صفحات محدد", "Custom Page Range"),
+        ["RotateButton"] = ("تدوير وحفظ المستند", "Rotate PDF"),
+        ["RotateSuccess"] = ("تم تدوير صفحات المستند بنجاح في الذاكرة", "Document pages rotated successfully in memory"),
+        ["StartRotating"] = ("ابدأ تدوير الصفحات", "Start Rotating"),
+        ["RotateAllRight"] = ("تدوير الكل لليمين", "Rotate All Right"),
+        ["RotateAllLeft"] = ("تدوير الكل لليسار", "Rotate All Left"),
+        ["ResetRotations"] = ("إعادة ضبط", "Reset"),
+        ["Page"] = ("صفحة", "Page"),
+        ["LoadingPreviews"] = ("جارٍ إعداد معاينة الصفحات...", "Rendering page previews..."),
+
+        // Remove Pages Specific
+        ["StartRemoving"] = ("ابدأ حذف الصفحات", "Start Removing Pages"),
+        ["PagesToRemovePrompt"] = ("انقر على الصفحات لحذفها أو أدخل نطاق الصفحات:", "Click pages to remove or enter page numbers:"),
+        ["MarkedForRemoval"] = ("محددة للحذف", "Marked for removal"),
+        ["ClickToRemove"] = ("انقر للحذف", "Click to remove"),
+        ["ClickToRestore"] = ("انقر للاستعادة", "Click to restore"),
+        ["RemovePagesButton"] = ("حذف الصفحات وتنزيل الملف", "Remove Selected Pages"),
+        ["RemoveSuccess"] = ("تم حذف الصفحات المحددة بنجاح في الذاكرة", "Selected pages removed successfully in memory"),
+        ["SelectAll"] = ("تحديد الكل", "Select All"),
+        ["ClearSelection"] = ("إلغاء التحديد", "Clear Selection"),
+        ["PagesRemaining"] = ("صفحات متبقية", "pages remaining"),
+        ["PagesSelectedCount"] = ("صفحات محددة للحذف", "pages selected for removal"),
+        ["CannotRemoveAllPages"] = ("لا يمكن حذف جميع صفحات المستند، يجب الإبقاء على صفحة واحدة على الأقل.", "Cannot remove all pages. At least one page must remain in the document."),
+        ["NoPagesSelected"] = ("يرجى تحديد صفحة واحدة على الأقل لحذفها.", "Please select at least one page to remove."),
+
+        // Reorder Specific
+        ["StartReordering"] = ("ابدأ إعادة الترتيب", "Start Reordering"),
+        ["ReverseOrder"] = ("عكس الترتيب (N..1)", "Reverse Order (N..1)"),
+        ["ResetOrder"] = ("إعادة الترتيب الأصلي", "Reset to Original"),
+        ["CurrentSequence"] = ("ترتيب الصفحات الحالي:", "Current Sequence:"),
+        ["CustomSequencePrompt"] = ("تحديد تسلسل مخصص (مثال: 3, 1, 2, 4-6):", "Custom Page Order (e.g. 3, 1, 2, 4-6):"),
+        ["ApplySequence"] = ("تطبيق الترتيب", "Apply Order"),
+        ["ReorderButton"] = ("حفظ وتنزيل المستند المرتب", "Save & Download Reordered PDF"),
+        ["ReorderSuccess"] = ("تمت إعادة ترتيب المستند بنجاح في الذاكرة", "PDF pages reordered successfully in memory"),
+        ["OriginalPage"] = ("الأصلية", "Orig."),
+        ["InvalidSequence"] = ("صيغة التسلسل غير صالحة. يرجى إدخال أرقام صفحات صحيحة.", "Invalid sequence format. Please enter valid page numbers."),
+
+        // Large PDF Navigation & Batch Controls (100+ Pages)
+        ["JumpToPage"] = ("الانتقال إلى صفحة:", "Go to Page:"),
+        ["JumpButton"] = ("انتقال", "Go"),
+        ["ShowingPages"] = ("عرض", "Showing"),
+        ["Of"] = ("من", "of"),
+        ["PerPage"] = ("لكل عرض:", "Per view:"),
+        ["ShowAll"] = ("الكل", "All"),
+        ["PrevView"] = ("السابق", "Prev"),
+        ["NextView"] = ("التالي", "Next"),
+        ["BatchRotateRange"] = ("تدوير نطاق صفحات (مثال: 50-100):", "Batch Rotate Range (e.g. 50-100):"),
+        ["RotateRangeLeft"] = ("↺ تدوير النطاق لليسار", "↺ Rotate Range Left"),
+        ["RotateRangeRight"] = ("↻ تدوير النطاق لليمين", "↻ Rotate Range Right"),
+        ["SelectOdd"] = ("تحديد الفردية", "Select Odd"),
+        ["SelectEven"] = ("تحديد الزوجية", "Select Even"),
+        ["InvertSelection"] = ("عكس التحديد", "Invert Selection"),
+        ["MoveToPosition"] = ("نقل إلى الموضع #", "Move to #"),
+        ["MoveFirst"] = ("للأول", "First"),
+        ["MoveLast"] = ("للأخير", "Last"),
+
+        // Metadata & Sanitizer Specific
+        ["StartMetadata"] = ("تعديل أو تنظيف البيانات", "Edit or Sanitize Metadata"),
+        ["MetaTitle"] = ("عنوان المستند (Title)", "Document Title"),
+        ["MetaAuthor"] = ("المؤلف (Author)", "Author"),
+        ["MetaSubject"] = ("الموضوع (Subject)", "Subject"),
+        ["MetaKeywords"] = ("الكلمات المفتاحية (Keywords)", "Keywords"),
+        ["MetaCreator"] = ("برنامج الإنشاء (Creator)", "Creator Application"),
+        ["MetaProducer"] = ("محرك الـ PDF (Producer)", "PDF Producer"),
+        ["MetaCreationDate"] = ("تاريخ الإنشاء", "Creation Date"),
+        ["MetaModDate"] = ("تاريخ آخر تعديل", "Last Modified"),
+        ["MetaPdfVersion"] = ("إصدار PDF", "PDF Version"),
+        ["SaveMetadataButton"] = ("حفظ البيانات وتنزيل المستند", "Save Metadata & Download PDF"),
+        ["SanitizeNowButton"] = ("مسح كافة البيانات وتنزيل نسخة نظيفة", "Sanitize All Metadata & Download"),
+        ["ClearFieldsButton"] = ("تفريغ الحقول", "Clear All Fields"),
+        ["RestoreOriginalButton"] = ("استعادة القيم الأصلية", "Restore Original"),
+        ["MetadataSuccess"] = ("تم تحديث بيانات المستند بنجاح في الذاكرة", "Document metadata updated successfully in memory"),
+        ["PrivacySanitizerTitle"] = ("منظف الخصوصية الفوري", "One-Click Privacy Sanitizer"),
+        ["PrivacySanitizerDesc"] = ("احذف اسم المؤلف وبرنامج الإنشاء وجميع البيانات الوصفية المخفية بنقرة واحدة قبل مشاركة الملف.", "Strip hidden author names, software tags, and document properties in one click before sharing."),
+
+        // Watermark Specific (iLovePDF Style)
+        ["StartWatermarking"] = ("ابدأ إضافة العلامة المائية", "Add Watermark"),
+        ["WatermarkOptionsTitle"] = ("خيارات العلامة المائية", "Watermark Options"),
+        ["PlaceText"] = ("إدراج نص", "Place text"),
+        ["PlaceImage"] = ("إدراج صورة", "Place image"),
+        ["WatermarkTextLabel"] = ("النص:", "Text:"),
+        ["WatermarkTextPlaceholder"] = ("أدخل نص العلامة المائية...", "Enter watermark text..."),
+        ["QuickPresets"] = ("قوالب جاهزة:", "Quick Presets:"),
+        ["PresetConfidential"] = ("سري للغاية", "CONFIDENTIAL"),
+        ["PresetDraft"] = ("مسودة", "DRAFT"),
+        ["PresetCopy"] = ("نسخة", "COPY"),
+        ["PresetDoNotCopy"] = ("لا يُسمح بالنسخ", "DO NOT COPY"),
+        ["TextFormat"] = ("تنسيق النص:", "Text format:"),
+        ["FontFamily"] = ("الخط", "Font"),
+        ["FontSize"] = ("الحجم", "Size"),
+        ["TextColor"] = ("اللون", "Color"),
+        ["Bold"] = ("عريض", "Bold"),
+        ["Italic"] = ("مائل", "Italic"),
+        ["UploadWatermarkImage"] = ("اختر شعاراً أو صورة (PNG / JPG / WebP)", "Select Logo or Image (PNG / JPG / WebP)"),
+        ["ChangeImage"] = ("تغيير الصورة", "Change Image"),
+        ["ImageSizeScale"] = ("حجم الشعار (% من عرض الصفحة):", "Image Size (% of page width):"),
+        ["PositionAndMosaic"] = ("الموضع والتكرار الشبكي:", "Position:"),
+        ["MosaicMode"] = ("فسيفساء (تكرار شبكي)", "Mosaic"),
+        ["MosaicDesc"] = ("تكرار العلامة المائية على كامل الصفحة", "Tile watermark across the whole page"),
+        ["Transparency"] = ("الشفافية:", "Transparency:"),
+        ["NoTransparency"] = ("بدون شفافية", "No transparency"),
+        ["Rotation"] = ("التدوير:", "Rotation:"),
+        ["DoNotRotate"] = ("بدون تدوير (0°)", "Do not rotate"),
+        ["Degrees"] = ("درجة", "degrees"),
+        ["PagesToWatermark"] = ("الصفحات المستهدفة:", "Pages:"),
+        ["LayerTitle"] = ("طبقة العلامة المائية:", "Layer:"),
+        ["LayerOver"] = ("فوق محتوى الصفحة", "Over the PDF content"),
+        ["LayerBelow"] = ("خلف محتوى الصفحة", "Below the PDF content"),
+        ["WatermarkButton"] = ("إضافة العلامة المائية", "Add watermark"),
+        ["WatermarkSuccess"] = ("تمت إضافة العلامة المائية إلى المستند بنجاح في الذاكرة", "Watermark stamped onto PDF successfully in memory"),
+        ["WatermarkedBadge"] = ("علامة مائية", "Watermarked"),
+        ["SkippedPageBadge"] = ("بدون علامة", "Skipped"),
+
+        // Word Specific
+        ["ConvertWordButton"] = ("تحويل المستند إلى PDF", "Convert Document to PDF"),
+        ["WordSuccess"] = ("تم تحويل مستند Word إلى PDF بنجاح", "Word document converted to PDF successfully"),
+        ["SelectDocxPrompt"] = ("اسحب ملف Word (.docx) هنا أو انقر للاختيار من جهازك", "Drag & drop a Word (.docx) file here or click to browse"),
+
+        // Excel & Markdown to PDF Specific
+        ["ExcelMarkdownTitle"] = ("تحويل Excel و Markdown إلى PDF", "Excel (.xlsx) & Markdown to PDF"),
+        ["ExcelMarkdownDesc"] = ("تحويل جداول بيانات Excel (.xlsx) ومستندات Markdown (.md) إلى ملفات PDF متعددة الصفحات وعالية الدقة محلياً في الذاكرة.", "Convert Excel spreadsheets (.xlsx) and Markdown documents (.md) into paginated, print-ready PDFs 100% in memory."),
+        ["StartExcelMarkdown"] = ("ابدأ تحويل الجداول والنصوص", "Convert Excel & Markdown"),
+        ["TabExcelMode"] = ("جدول Excel (.xlsx)", "Excel (.xlsx) Spreadsheet"),
+        ["TabMarkdownMode"] = ("مستند Markdown (.md)", "Markdown (.md) Studio"),
+        ["SelectExcelPrompt"] = ("اسحب ملف Excel (.xlsx) هنا أو انقر للاختيار من جهازك", "Drag & drop an Excel (.xlsx) file here or click to browse"),
+        ["SelectMarkdownFile"] = ("استيراد ملف (.md / .txt)", "Upload (.md / .txt) File"),
+        ["WorksheetsFound"] = ("أوراق العمل المكتشفة:", "Worksheets in Workbook:"),
+        ["RowsLabel"] = ("صف", "rows"),
+        ["ColsLabel"] = ("عمود", "cols"),
+        ["PreviewingSheet"] = ("معاينة ورقة العمل:", "Live Sheet Preview:"),
+        ["ShowingTopRows"] = ("عرض أول 25 صفاً للمعاينة الفورية", "Showing up to 25 rows for instant preview"),
+        ["PageSetupTitle"] = ("إعدادات الصفحة والتنسيق", "Page Setup & Layout Options"),
+        ["OrientationLabel"] = ("اتجاه الصفحة:", "Page Orientation:"),
+        ["OrientationLandscape"] = ("أفقي (Landscape)", "Landscape (Wide)"),
+        ["OrientationPortrait"] = ("عمودي (Portrait)", "Portrait (Tall)"),
+        ["PageSizeLabel"] = ("حجم الورق:", "Page Size:"),
+        ["DirectionLabel"] = ("اتجاه أعمدة الجدول:", "Table Column Flow:"),
+        ["DirAuto"] = ("تلقائي (حسب اللغة)", "Auto-Detect"),
+        ["DirRtl"] = ("من اليمين لليسار (RTL)", "Right-to-Left (RTL)"),
+        ["DirLtr"] = ("من اليسار لليمين (LTR)", "Left-to-Right (LTR)"),
+        ["HeaderColorLabel"] = ("لون ترويسة الجدول والعناوين:", "Header & Accent Color:"),
+        ["RepeatHeaderToggle"] = ("تكرار صف الترويسة في كل صفحة جديدة", "Repeat header row on every new page"),
+        ["ZebraStripingToggle"] = ("تلوين الصفوف بالتناوب لسهولة القراءة", "Alternating row zebra striping"),
+        ["ShowGridlinesToggle"] = ("إظهار حدود الخلايا والشبكة", "Show cell gridlines"),
+        ["ShowSheetTitleToggle"] = ("إظهار عنوان ورقة العمل أعلى الجدول", "Show worksheet title banner"),
+        ["ShowRowNumbersToggle"] = ("إضافة عمود ترقيم الصفوف (#)", "Include row number column (#)"),
+        ["IncludePageNumbersToggle"] = ("ترقيم الصفحات في تذييل المستند", "Include page numbers in footer"),
+        ["FontSizeScaleLabel"] = ("حجم خط المستند:", "Document Font Scale:"),
+        ["ScaleSmall"] = ("صغير", "Compact"),
+        ["ScaleMedium"] = ("متوسط (قياسي)", "Medium"),
+        ["ScaleLarge"] = ("كبير", "Large"),
+        ["MarkdownDocTitleLabel"] = ("عنوان ملف الـ PDF:", "Document Title:"),
+        ["MarkdownEditorLabel"] = ("محرر Markdown المباشر:", "Live Markdown Editor:"),
+        ["SampleEnTemplate"] = ("نموذج تقرير (English)", "Load English Sample"),
+        ["SampleArTemplate"] = ("نموذج تقرير (عربي)", "Load Arabic Sample"),
+        ["ClearEditor"] = ("مسح النص", "Clear"),
+        ["ConvertExcelButton"] = ("تحويل جدول Excel إلى PDF", "Convert Excel to PDF"),
+        ["ConvertMarkdownButton"] = ("تحويل Markdown إلى PDF", "Convert Markdown to PDF"),
+        ["ExcelMarkdownSuccess"] = ("تم إنشاء ملف الـ PDF بنجاح في الذاكرة", "PDF generated successfully in memory"),
+        
+        // Performance
+        ["ExecutionTime"] = ("زمن التنفيذ:", "Execution Time:"),
+        ["Milliseconds"] = ("ملي ثانية", "ms"),
+        ["ZeroDiskIoNotice"] = ("تمت المعالجة في الذاكرة العشوائية RAM بنسبة 100% دون كتابة أي ملف على القرص", "Processed 100% in RAM with zero disk writes")
+    };
+
+    public static string Get(string key, string lang)
+    {
+        if (Strings.TryGetValue(key, out var val))
+        {
+            return string.Equals(lang, LocalizationState.SecondCulture, StringComparison.OrdinalIgnoreCase)
+                ? val.Ar
+                : val.En;
+        }
+        return key;
+    }
+}

@@ -1,0 +1,82 @@
+@inherits LayoutComponentBase
+@inject LocalizationState Loc
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="mnshor-app" dir="@Loc.Direction">
+    <header class="mnshor-header">
+        <a href="/" class="mnshor-logo-link">
+            <div class="mnshor-logo-icon">
+                <MnshorLogo Size="38" />
+            </div>
+            <div>
+                <span class="mnshor-brand-text">@Loc["AppName"]</span>
+            </div>
+        </a>
+
+        <div class="header-actions">
+            <span class="security-pill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>@Loc["SecurityBadge"]</span>
+            </span>
+
+            @if (IsDebugBuild)
+            {
+                <a href="/promo" class="btn-lang btn-promo-link" title="@(Loc.IsRtl ? "عرض الموشن جرافيكس" : "Motion Showcase")">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <polygon points="6 4 20 12 6 20 6 4"></polygon>
+                    </svg>
+                    <span>@(Loc.IsRtl ? "العرض الترويجي" : "Promo")</span>
+                </a>
+            }
+
+            <button type="button" class="btn-lang" @onclick="ToggleLang">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                <span>@Loc["SwitchLanguage"]</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="mnshor-container">
+        @Body
+    </main>
+</div>
+
+@code {
+#if DEBUG
+    private static readonly bool IsDebugBuild = true;
+#else
+    private static readonly bool IsDebugBuild = false;
+#endif
+
+    protected override void OnInitialized()
+    {
+        Loc.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("mnshor.setDocumentDirection", Loc.Direction);
+        }
+    }
+
+    private async Task ToggleLang()
+    {
+        Loc.ToggleLanguage();
+        await JS.InvokeVoidAsync("mnshor.setDocumentDirection", Loc.Direction);
+    }
+
+    public void Dispose()
+    {
+        Loc.OnChange -= StateHasChanged;
+    }
+}

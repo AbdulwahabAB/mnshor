@@ -1,0 +1,833 @@
+@page "/excel-markdown-to-pdf"
+@page "/excel-to-pdf"
+@page "/markdown-to-pdf"
+@rendermode InteractiveServer
+@inject LocalizationState Loc
+@inject ISpreadsheetMarkdownConverter Converter
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>@Loc["ExcelMarkdownTitle"] - @Loc["AppName"]</PageTitle>
+
+<a href="/" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="@(Loc.IsRtl ? "transform: rotate(180deg);" : "")">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    <span>@Loc["BackToTools"]</span>
+</a>
+
+<div class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h1 class="panel-title">@Loc["ExcelMarkdownTitle"]</h1>
+            <p class="panel-desc">@Loc["ExcelMarkdownDesc"]</p>
+        </div>
+    </div>
+
+    <!-- Top Mode Switcher: Excel (.xlsx) vs Markdown (.md) -->
+    <div class="excel-md-mode-switcher">
+        <button type="button"
+                class="excel-md-mode-btn @(options.Mode == ConversionInputMode.Excel ? "active" : "")"
+                @onclick="() => SwitchMode(ConversionInputMode.Excel)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="3" y1="15" x2="21" y2="15"></line>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+                <line x1="15" y1="3" x2="15" y2="21"></line>
+            </svg>
+            <span>@Loc["TabExcelMode"]</span>
+        </button>
+
+        <button type="button"
+                class="excel-md-mode-btn @(options.Mode == ConversionInputMode.Markdown ? "active" : "")"
+                @onclick="() => SwitchMode(ConversionInputMode.Markdown)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <span>@Loc["TabMarkdownMode"]</span>
+        </button>
+    </div>
+
+    @if (options.Mode == ConversionInputMode.Excel)
+    {
+        @if (selectedExcelFile == null)
+        {
+            <label class="smart-dropzone">
+                <InputFile class="dropzone-input-overlay" OnChange="OnExcelFileSelected" accept=".xlsx,.md,.markdown,.txt" />
+                <div class="dropzone-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                </div>
+                <div class="dropzone-text">@Loc["SelectExcelPrompt"]</div>
+                <div class="dropzone-subtext">Microsoft Excel (.xlsx) — 100% Local OpenXML In-Memory Engine (Max 500 MB)</div>
+            </label>
+        }
+        else
+        {
+            <div class="excel-md-workspace">
+                <!-- Left Stage: Workbook File Card, Sheet Selector & Live Table Preview -->
+                <div class="watermark-main-stage">
+                    <div class="file-item" style="margin-bottom: 1rem;">
+                        <div class="file-info">
+                            <div class="file-icon" style="color: #059669;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="file-name">@selectedExcelFile.FileName</div>
+                                <div class="file-meta-badges">
+                                    <span class="file-badge">@selectedExcelFile.FormattedSize</span>
+                                    @if (workbookInfo != null)
+                                    {
+                                        <span class="file-badge badge-accent">
+                                            @workbookInfo.Sheets.Count @(Loc.IsRtl ? "أوراق عمل" : "worksheets")
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <button type="button" class="btn-lang" @onclick="ResetExcelFile" style="color: var(--danger); border-color: var(--danger-border); background: var(--danger-surface);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                <span>@Loc["Remove"]</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (workbookInfo != null && workbookInfo.Sheets.Count > 0)
+                    {
+                        <div style="margin-bottom: 0.45rem; font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">
+                            @Loc["WorksheetsFound"]
+                        </div>
+
+                        <div class="sheet-tabs-bar">
+                            @foreach (var sheet in workbookInfo.Sheets)
+                            {
+                                bool isChecked = options.SelectedSheetNames.Contains(sheet.Name);
+                                bool isPreviewed = string.Equals(activePreviewSheet?.Name, sheet.Name, StringComparison.OrdinalIgnoreCase);
+
+                                <div class="sheet-tab-pill @(isPreviewed ? "active-preview" : "")" @onclick="() => SelectPreviewSheet(sheet)">
+                                    <input type="checkbox"
+                                           checked="@isChecked"
+                                           @onclick:stopPropagation="true"
+                                           @onchange="(e) => ToggleSheetSelection(sheet.Name, e.Value is bool b && b)" />
+                                    <span>@sheet.Name</span>
+                                    <span class="file-badge" style="font-size: 0.72rem;">
+                                        @sheet.TotalRows @Loc["RowsLabel"] × @sheet.TotalColumns @Loc["ColsLabel"]
+                                    </span>
+                                </div>
+                            }
+                        </div>
+
+                        @if (activePreviewSheet != null)
+                        {
+                            bool previewRtl = options.DirectionMode switch
+                            {
+                                TableDirectionMode.Rtl => true,
+                                TableDirectionMode.Ltr => false,
+                                _ => activePreviewSheet.IsRtlDetected
+                            };
+
+                            <div class="excel-preview-container" dir="@(previewRtl ? "rtl" : "ltr")">
+                                <div class="excel-preview-header">
+                                    <div>
+                                        <strong>@Loc["PreviewingSheet"]</strong>
+                                        <span style="color: var(--brand-primary); font-weight: 700; margin-inline-start: 0.35rem;">@activePreviewSheet.Name</span>
+                                    </div>
+                                    <span style="color: var(--text-muted); font-size: 0.78rem;">@Loc["ShowingTopRows"]</span>
+                                </div>
+
+                                @if (activePreviewSheet.PreviewRows.Count == 0)
+                                {
+                                    <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+                                        @(Loc.IsRtl ? "ورقة العمل هذه فارغة." : "This worksheet is empty.")
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="excel-preview-scroll">
+                                        <table class="excel-preview-table @(options.ShowGridlines ? "with-gridlines" : "") @(options.ZebraStriping ? "zebra-rows" : "")">
+                                            <thead>
+                                                <tr>
+                                                    @if (options.ShowRowNumbers)
+                                                    {
+                                                        <th style="background: @options.HeaderAccentHex; width: 42px; text-align: center;">#</th>
+                                                    }
+                                                    @foreach (var headerCell in activePreviewSheet.PreviewRows[0])
+                                                    {
+                                                        <th style="background: @options.HeaderAccentHex;">@(string.IsNullOrEmpty(headerCell) ? "—" : headerCell)</th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (int r = 1; r < activePreviewSheet.PreviewRows.Count; r++)
+                                                {
+                                                    var row = activePreviewSheet.PreviewRows[r];
+                                                    <tr>
+                                                        @if (options.ShowRowNumbers)
+                                                        {
+                                                            <td style="text-align: center; font-weight: 600; color: var(--text-muted);">@r</td>
+                                                        }
+                                                        @for (int c = 0; c < activePreviewSheet.TotalColumns; c++)
+                                                        {
+                                                            string val = c < row.Length ? row[c] : string.Empty;
+                                                            <td>@val</td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Right Sidebar: Excel Page Setup & Formatting Options -->
+                <aside class="watermark-sidebar">
+                    <div class="watermark-sidebar-header">
+                        @Loc["PageSetupTitle"]
+                    </div>
+
+                    <div class="watermark-sidebar-body">
+                        <!-- Orientation -->
+                        <div class="wm-section">
+                            <label class="wm-label">@Loc["OrientationLabel"]</label>
+                            <div class="layer-selector-grid">
+                                <button type="button"
+                                        class="layer-card @(options.Orientation == PdfPageOrientation.Landscape ? "active" : "")"
+                                        @onclick="() => options.Orientation = PdfPageOrientation.Landscape">
+                                    <span>@Loc["OrientationLandscape"]</span>
+                                </button>
+                                <button type="button"
+                                        class="layer-card @(options.Orientation == PdfPageOrientation.Portrait ? "active" : "")"
+                                        @onclick="() => options.Orientation = PdfPageOrientation.Portrait">
+                                    <span>@Loc["OrientationPortrait"]</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Page Size -->
+                        <div class="wm-section">
+                            <label class="wm-label">@Loc["PageSizeLabel"]</label>
+                            <div class="layer-selector-grid">
+                                <button type="button"
+                                        class="layer-card @(options.PageSize == PdfPageSizePreset.A4 ? "active" : "")"
+                                        @onclick="() => options.PageSize = PdfPageSizePreset.A4">
+                                    <span>A4 Standard</span>
+                                </button>
+                                <button type="button"
+                                        class="layer-card @(options.PageSize == PdfPageSizePreset.Letter ? "active" : "")"
+                                        @onclick="() => options.PageSize = PdfPageSizePreset.Letter">
+                                    <span>US Letter</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Table Column Flow (Auto / RTL / LTR) -->
+                        <div class="wm-section">
+                            <label class="wm-label">@Loc["DirectionLabel"]</label>
+                            <select class="compact-input" style="width: 100%; padding: 0.5rem;" @bind="options.DirectionMode">
+                                <option value="@TableDirectionMode.Auto">@Loc["DirAuto"]</option>
+                                <option value="@TableDirectionMode.Rtl">@Loc["DirRtl"]</option>
+                                <option value="@TableDirectionMode.Ltr">@Loc["DirLtr"]</option>
+                            </select>
+                        </div>
+
+                        <!-- Header Accent Color -->
+                        <div class="wm-section">
+                            <label class="wm-label">@Loc["HeaderColorLabel"]</label>
+                            <div class="wm-color-row">
+                                @foreach (var swatch in ColorSwatches)
+                                {
+                                    <button type="button"
+                                            class="wm-color-swatch @(string.Equals(options.HeaderAccentHex, swatch, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                                            style="background-color: @swatch;"
+                                            @onclick="() => options.HeaderAccentHex = swatch">
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Table Layout Checkboxes -->
+                        <div class="wm-section" style="gap: 0.55rem;">
+                            <label class="mosaic-toggle-card @(options.RepeatHeaderRow ? "active" : "")">
+                                <input type="checkbox" @bind="options.RepeatHeaderRow" />
+                                <span style="font-size: 0.82rem; font-weight: 600;">@Loc["RepeatHeaderToggle"]</span>
+                            </label>
+
+                            <label class="mosaic-toggle-card @(options.ZebraStriping ? "active" : "")">
+                                <input type="checkbox" @bind="options.ZebraStriping" />
+                                <span style="font-size: 0.82rem; font-weight: 600;">@Loc["ZebraStripingToggle"]</span>
+                            </label>
+
+                            <label class="mosaic-toggle-card @(options.ShowGridlines ? "active" : "")">
+                                <input type="checkbox" @bind="options.ShowGridlines" />
+                                <span style="font-size: 0.82rem; font-weight: 600;">@Loc["ShowGridlinesToggle"]</span>
+                            </label>
+
+                            <label class="mosaic-toggle-card @(options.ShowSheetTitle ? "active" : "")">
+                                <input type="checkbox" @bind="options.ShowSheetTitle" />
+                                <span style="font-size: 0.82rem; font-weight: 600;">@Loc["ShowSheetTitleToggle"]</span>
+                            </label>
+
+                            <label class="mosaic-toggle-card @(options.ShowRowNumbers ? "active" : "")">
+                                <input type="checkbox" @bind="options.ShowRowNumbers" />
+                                <span style="font-size: 0.82rem; font-weight: 600;">@Loc["ShowRowNumbersToggle"]</span>
+                            </label>
+
+                            <label class="mosaic-toggle-card @(options.IncludePageNumbers ? "active" : "")">
+                                <input type="checkbox" @bind="options.IncludePageNumbers" />
+                                <span style="font-size: 0.82rem; font-weight: 600;">@Loc["IncludePageNumbersToggle"]</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="watermark-sidebar-footer">
+                        <button type="button" class="btn-primary-action" disabled="@isProcessing" @onclick="ExecuteExcelConversion">
+                            @if (isProcessing)
+                            {
+                                <span>@Loc["Processing"]</span>
+                            }
+                            else
+                            {
+                                <span>@Loc["ConvertExcelButton"]</span>
+                            }
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        }
+    }
+    else
+    {
+        <!-- Markdown Studio Workspace -->
+        <div class="excel-md-workspace">
+            <div class="watermark-main-stage">
+                <div class="md-editor-card">
+                    <div class="md-editor-toolbar">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">@Loc["MarkdownDocTitleLabel"]</label>
+                            <input type="text" class="compact-input" style="width: 190px;" @bind="markdownDocumentTitle" placeholder="Markdown_Report" />
+
+                            <label class="btn-tool-action" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; position: relative; overflow: hidden;">
+                                <InputFile OnChange="OnMarkdownFileSelected" accept=".md,.markdown,.txt" style="position: absolute; inset: 0; opacity: 0; cursor: pointer;" />
+                                <span>📂 @Loc["SelectMarkdownFile"]</span>
+                            </label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                            <button type="button" class="wm-preset-chip" @onclick="LoadEnglishMarkdownSample">
+                                @Loc["SampleEnTemplate"]
+                            </button>
+                            <button type="button" class="wm-preset-chip" @onclick="LoadArabicMarkdownSample">
+                                @Loc["SampleArTemplate"]
+                            </button>
+                            <button type="button" class="wm-preset-chip" style="color: var(--danger);" @onclick="ClearMarkdownEditor">
+                                @Loc["ClearEditor"]
+                            </button>
+                        </div>
+                    </div>
+
+                    <textarea class="md-textarea"
+                              dir="auto"
+                              @bind="markdownText"
+                              @bind:event="oninput"
+                              placeholder="# Write or paste your Markdown (.md) content here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Right Sidebar: Markdown Page Setup & Typography -->
+            <aside class="watermark-sidebar">
+                <div class="watermark-sidebar-header">
+                    @Loc["PageSetupTitle"]
+                </div>
+
+                <div class="watermark-sidebar-body">
+                    <!-- Orientation -->
+                    <div class="wm-section">
+                        <label class="wm-label">@Loc["OrientationLabel"]</label>
+                        <div class="layer-selector-grid">
+                            <button type="button"
+                                    class="layer-card @(options.Orientation == PdfPageOrientation.Portrait ? "active" : "")"
+                                    @onclick="() => options.Orientation = PdfPageOrientation.Portrait">
+                                <span>@Loc["OrientationPortrait"]</span>
+                            </button>
+                            <button type="button"
+                                    class="layer-card @(options.Orientation == PdfPageOrientation.Landscape ? "active" : "")"
+                                    @onclick="() => options.Orientation = PdfPageOrientation.Landscape">
+                                <span>@Loc["OrientationLandscape"]</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Page Size -->
+                    <div class="wm-section">
+                        <label class="wm-label">@Loc["PageSizeLabel"]</label>
+                        <div class="layer-selector-grid">
+                            <button type="button"
+                                    class="layer-card @(options.PageSize == PdfPageSizePreset.A4 ? "active" : "")"
+                                    @onclick="() => options.PageSize = PdfPageSizePreset.A4">
+                                <span>A4 Standard</span>
+                            </button>
+                            <button type="button"
+                                    class="layer-card @(options.PageSize == PdfPageSizePreset.Letter ? "active" : "")"
+                                    @onclick="() => options.PageSize = PdfPageSizePreset.Letter">
+                                <span>US Letter</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Font Scale -->
+                    <div class="wm-section">
+                        <label class="wm-label">@Loc["FontSizeScaleLabel"]</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem;">
+                            <button type="button"
+                                    class="layer-card @(options.FontSizeScale == MarkdownFontSizeScale.Small ? "active" : "")"
+                                    @onclick="() => options.FontSizeScale = MarkdownFontSizeScale.Small">
+                                <span>@Loc["ScaleSmall"]</span>
+                            </button>
+                            <button type="button"
+                                    class="layer-card @(options.FontSizeScale == MarkdownFontSizeScale.Medium ? "active" : "")"
+                                    @onclick="() => options.FontSizeScale = MarkdownFontSizeScale.Medium">
+                                <span>@Loc["ScaleMedium"]</span>
+                            </button>
+                            <button type="button"
+                                    class="layer-card @(options.FontSizeScale == MarkdownFontSizeScale.Large ? "active" : "")"
+                                    @onclick="() => options.FontSizeScale = MarkdownFontSizeScale.Large">
+                                <span>@Loc["ScaleLarge"]</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Accent Color -->
+                    <div class="wm-section">
+                        <label class="wm-label">@Loc["HeaderColorLabel"]</label>
+                        <div class="wm-color-row">
+                            @foreach (var swatch in ColorSwatches)
+                            {
+                                <button type="button"
+                                        class="wm-color-swatch @(string.Equals(options.HeaderAccentHex, swatch, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                                        style="background-color: @swatch;"
+                                        @onclick="() => options.HeaderAccentHex = swatch">
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Footer Page Numbers -->
+                    <div class="wm-section">
+                        <label class="mosaic-toggle-card @(options.IncludePageNumbers ? "active" : "")">
+                            <input type="checkbox" @bind="options.IncludePageNumbers" />
+                            <span style="font-size: 0.82rem; font-weight: 600;">@Loc["IncludePageNumbersToggle"]</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="watermark-sidebar-footer">
+                    <button type="button" class="btn-primary-action" disabled="@isProcessing" @onclick="ExecuteMarkdownConversion">
+                        @if (isProcessing)
+                        {
+                            <span>@Loc["Processing"]</span>
+                        }
+                        else
+                        {
+                            <span>@Loc["ConvertMarkdownButton"]</span>
+                        }
+                    </button>
+                </div>
+            </aside>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="margin-top: 1.25rem; padding: 0.85rem 1.25rem; background: var(--danger-surface); border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <!-- Result Telemetry -->
+    @if (lastResult != null && lastResult.Success)
+    {
+        <div class="telemetry-card">
+            <div class="telemetry-header">
+                <span style="display: flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>@Loc["ExcelMarkdownSuccess"]</span>
+                </span>
+                <span class="telemetry-speed">⚡ @lastResult.ElapsedMilliseconds @Loc["Milliseconds"]</span>
+            </div>
+            <div class="telemetry-summary">
+                @lastResult.Summary
+            </div>
+            <div class="telemetry-note">
+                @Loc["ZeroDiskIoNotice"]
+            </div>
+            <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn-primary-action" style="padding: 0.65rem 1.5rem; font-size: 0.92rem; width: auto;" @onclick="DownloadAgain">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>@Loc["DownloadResult"] (@lastResult.OutputFileName)</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly string[] ColorSwatches =
+    [
+        "#1E293B", // Slate
+        "#2563EB", // Sapphire Blue
+        "#059669", // Emerald Green
+        "#4F46E5", // Indigo
+        "#B45309", // Amber
+        "#DC2626"  // Crimson
+    ];
+
+    private SpreadsheetMarkdownOptions options = new();
+    private DocumentItem? selectedExcelFile;
+    private ExcelWorkbookInfo? workbookInfo;
+    private ExcelSheetPreview? activePreviewSheet;
+
+    private string markdownDocumentTitle = "Executive_Summary";
+    private string markdownText = string.Empty;
+
+    private bool isProcessing = false;
+    private string? errorMessage;
+    private ExecutionResult? lastResult;
+
+    protected override void OnInitialized()
+    {
+        Loc.OnChange += StateHasChanged;
+
+        if (Nav.Uri.EndsWith("/markdown-to-pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            SwitchMode(ConversionInputMode.Markdown);
+        }
+        else
+        {
+            LoadEnglishMarkdownSample();
+        }
+    }
+
+    private void SwitchMode(ConversionInputMode mode)
+    {
+        options.Mode = mode;
+        errorMessage = null;
+        lastResult = null;
+
+        if (mode == ConversionInputMode.Excel)
+        {
+            options.Orientation = PdfPageOrientation.Landscape;
+        }
+        else
+        {
+            options.Orientation = PdfPageOrientation.Portrait;
+            if (string.IsNullOrWhiteSpace(markdownText))
+            {
+                if (Loc.IsRtl) LoadArabicMarkdownSample();
+                else LoadEnglishMarkdownSample();
+            }
+        }
+    }
+
+    private async Task OnExcelFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        lastResult = null;
+        var file = e.File;
+
+        // If user dropped a Markdown file in the Excel dropzone, switch seamlessly to Markdown mode
+        if (file.Name.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
+            file.Name.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase) ||
+            file.Name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+        {
+            SwitchMode(ConversionInputMode.Markdown);
+            await LoadMarkdownFromBrowserFile(file);
+            return;
+        }
+
+        if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = Loc.IsRtl
+                ? "يرجى اختيار ملف Excel صالح بصيغة (.xlsx) أو ملف Markdown (.md)."
+                : "Please select a valid Excel (.xlsx) or Markdown (.md) file.";
+            return;
+        }
+
+        try
+        {
+            using var ms = new MemoryStream();
+            using var stream = file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024);
+            await stream.CopyToAsync(ms);
+            var data = ms.ToArray();
+
+            var info = Converter.InspectWorkbook(data);
+            if (!info.IsValid)
+            {
+                errorMessage = info.ErrorMessage;
+                return;
+            }
+
+            selectedExcelFile = new DocumentItem
+            {
+                FileName = file.Name,
+                ContentType = file.ContentType,
+                Size = file.Size,
+                Data = data
+            };
+
+            workbookInfo = info;
+            options.SelectedSheetNames.Clear();
+            foreach (var sh in info.Sheets.Where(s => s.TotalRows > 0))
+            {
+                options.SelectedSheetNames.Add(sh.Name);
+            }
+            if (options.SelectedSheetNames.Count == 0 && info.Sheets.Count > 0)
+            {
+                options.SelectedSheetNames.Add(info.Sheets[0].Name);
+            }
+
+            activePreviewSheet = info.Sheets.FirstOrDefault(s => s.TotalRows > 0) ?? info.Sheets.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading {file.Name}: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnMarkdownFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        lastResult = null;
+        await LoadMarkdownFromBrowserFile(e.File);
+    }
+
+    private async Task LoadMarkdownFromBrowserFile(IBrowserFile file)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            using var stream = file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+            await stream.CopyToAsync(ms);
+            markdownText = System.Text.Encoding.UTF8.GetString(ms.ToArray());
+            markdownDocumentTitle = Path.GetFileNameWithoutExtension(file.Name);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to read Markdown file: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private void SelectPreviewSheet(ExcelSheetPreview sheet)
+    {
+        activePreviewSheet = sheet;
+    }
+
+    private void ToggleSheetSelection(string sheetName, bool isSelected)
+    {
+        if (isSelected)
+        {
+            options.SelectedSheetNames.Add(sheetName);
+        }
+        else
+        {
+            options.SelectedSheetNames.Remove(sheetName);
+        }
+    }
+
+    private void ResetExcelFile()
+    {
+        selectedExcelFile = null;
+        workbookInfo = null;
+        activePreviewSheet = null;
+        lastResult = null;
+        errorMessage = null;
+    }
+
+    private async Task ExecuteExcelConversion()
+    {
+        if (selectedExcelFile == null) return;
+
+        errorMessage = null;
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await Converter.ConvertExcelToPdfAsync(selectedExcelFile, options);
+            if (lastResult.Success)
+            {
+                await DownloadResult(lastResult);
+            }
+            else
+            {
+                errorMessage = lastResult.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExecuteMarkdownConversion()
+    {
+        errorMessage = null;
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await Converter.ConvertMarkdownToPdfAsync(markdownText, markdownDocumentTitle, options);
+            if (lastResult.Success)
+            {
+                await DownloadResult(lastResult);
+            }
+            else
+            {
+                errorMessage = lastResult.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void LoadEnglishMarkdownSample()
+    {
+        markdownDocumentTitle = "Mnshor_Architecture_Report";
+        markdownText = string.Join("\n", new[]
+        {
+            "# Mnshor Local-First Document Suite 🚀",
+            "",
+            "Welcome to the **Mnshor Markdown & Spreadsheet Studio**. This document is parsed and rendered **100% in RAM** with zero disk writes using `SkiaSharp` and `HarfBuzz`.",
+            "",
+            "## 1. Key Engineering Highlights",
+            "",
+            "- [x] **Zero Disk I/O**: All conversions happen inside `MemoryStream` buffers.",
+            "- [x] **Bilingual RTL & LTR Shaping**: Native Arabic ligatures and English typography.",
+            "- [x] **Vector PDF Output**: Crisp 300 DPI typography, tables, and inline emojis ✅",
+            "- [ ] Cloud dependency (None — 100% offline capable)",
+            "",
+            "> \"Privacy by architecture: your financial spreadsheets and confidential notes never leave your machine's memory.\"",
+            "",
+            "## 2. Benchmark Telemetry Summary",
+            "",
+            "| Feature Module | Engine Pipeline | Avg. Speed | Memory Footprint |",
+            "| :--- | :--- | :--- | :--- |",
+            "| Excel (.xlsx) to PDF | OpenXML + Skia Table Layout | 18 ms | ~4.2 MB |",
+            "| Markdown (.md) to PDF | AST Parser + HarfBuzz Shaper | 12 ms | ~2.8 MB |",
+            "| PDF Merge & Split | PDFsharp In-Memory | 5 ms | ~1.5 MB |",
+            "",
+            "## 3. Sample Code Snippet",
+            "",
+            "```csharp",
+            "using var stream = new MemoryStream(xlsxBytes, writable: false);",
+            "var result = await converter.ConvertExcelToPdfAsync(document, options);",
+            "```",
+            "",
+            "---",
+            "Generated locally by **Mnshor** 💡"
+        });
+    }
+
+    private void LoadArabicMarkdownSample()
+    {
+        markdownDocumentTitle = "تقرير_منشور_التنفيذي";
+        markdownText = string.Join("\n", new[]
+        {
+            "# تقرير الأداء والخصوصية — منصة مَنشُور 🚀",
+            "",
+            "مرحباً بك في **استوديو تحويل الجداول ومستندات Markdown إلى PDF**. تتم معالجة كافة النصوص والجداول **محلياً داخل الذاكرة العشوائية RAM بنسبة 100%** دون كتابة أي ملفات مؤقتة على القرص.",
+            "",
+            "## 1. المزايا التقنية الرئيسية",
+            "",
+            "- [x] **دعم كامل للغة العربية (RTL)**: تشكيل الحروف العربية بدقة عبر محرك `HarfBuzz`.",
+            "- [x] **جداول بيانات متعددة الصفحات**: تكرار صف الترويسة تلقائياً في كل صفحة جديدة ✅",
+            "- [x] **دعم الرموز التعبيرية (Emojis)**: عرض الرموز والمؤشرات البصرية بدقة عالية 📊",
+            "- [ ] إرسال البيانات لأي خادم خارجي (صفر — خصوصية تامة)",
+            "",
+            "> \"الأمان الحقيقي يبدأ عندما تتم معالجة مستنداتك المالية والتقنية داخل ذاكرة جهازك فقط.\"",
+            "",
+            "## 2. ملخص مقارنة الأداء",
+            "",
+            "| الأداة | المحرك المستخدم | زمن التنفيذ | مستوى الأمان |",
+            "| :--- | :--- | :--- | :--- |",
+            "| تحويل Excel إلى PDF | OpenXML + SkiaSharp | 18 ملي ثانية | محلي 100% 🔒 |",
+            "| تحويل Markdown إلى PDF | محلل النصوص الفوري | 12 ملي ثانية | محلي 100% 🔒 |",
+            "",
+            "---",
+            "تم الإنشاء محلياً بواسطة **مَنشُور** 🌟"
+        });
+    }
+
+    private void ClearMarkdownEditor()
+    {
+        markdownText = string.Empty;
+        lastResult = null;
+        errorMessage = null;
+    }
+
+    private async Task DownloadAgain()
+    {
+        if (lastResult != null && lastResult.Success)
+        {
+            await DownloadResult(lastResult);
+        }
+    }
+
+    private async Task DownloadResult(ExecutionResult result)
+    {
+        await JS.InvokeVoidAsync("mnshor.downloadFileFromByteArray", result.OutputFileName, result.ContentType, result.OutputData);
+    }
+
+    public void Dispose()
+    {
+        Loc.OnChange -= StateHasChanged;
+    }
+}

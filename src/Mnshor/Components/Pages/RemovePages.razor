@@ -1,0 +1,599 @@
+@page "/remove-pages"
+@rendermode InteractiveServer
+@inject LocalizationState Loc
+@inject IPdfEngine PdfEngine
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>@Loc["RemovePagesTitle"] - @Loc["AppName"]</PageTitle>
+
+<a href="/" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="@(Loc.IsRtl ? "transform: rotate(180deg);" : "")">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    <span>@Loc["BackToTools"]</span>
+</a>
+
+<div class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h1 class="panel-title">@Loc["RemovePagesTitle"]</h1>
+            <p class="panel-desc">@Loc["RemovePagesDesc"]</p>
+        </div>
+    </div>
+
+    @if (selectedFile == null)
+    {
+        <label class="smart-dropzone">
+            <InputFile class="dropzone-input-overlay" OnChange="OnFileSelected" accept=".pdf" />
+            <div class="dropzone-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </div>
+            <div class="dropzone-text">@Loc["DragDropPrompt"]</div>
+            <div class="dropzone-subtext">PDF files only (Max 500 MB)</div>
+        </label>
+    }
+    else
+    {
+        <!-- Document Meta Header -->
+        <div class="file-item" style="margin-bottom: 1.25rem;">
+            <div class="file-info">
+                <div class="file-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div class="file-name">@selectedFile.FileName</div>
+                    <div class="file-meta-badges">
+                        <span class="file-badge">@selectedFile.FormattedSize</span>
+                        <span class="file-badge badge-accent">
+                            @selectedFile.PageCount @Loc["PagesCount"]
+                        </span>
+                        @if (pagesToRemove.Count > 0)
+                        {
+                            <span class="file-badge" style="background: var(--danger-surface); color: var(--danger); border-color: var(--danger-border);">
+                                @pagesToRemove.Count @Loc["PagesSelectedCount"]
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="button" class="btn-lang" @onclick="ResetFile" style="color: var(--danger); border-color: var(--danger-border); background: var(--danger-surface);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    <span>@Loc["Remove"]</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Global Control Toolbar -->
+        <div class="pdf-preview-toolbar">
+            <div class="preview-toolbar-actions">
+                <button type="button" class="btn-tool-action" @onclick="SelectAll">
+                    <span>@Loc["SelectAll"]</span>
+                </button>
+                <button type="button" class="btn-tool-action" @onclick="SelectOddPages">
+                    <span>@Loc["SelectOdd"]</span>
+                </button>
+                <button type="button" class="btn-tool-action" @onclick="SelectEvenPages">
+                    <span>@Loc["SelectEven"]</span>
+                </button>
+                <button type="button" class="btn-tool-action" @onclick="InvertSelection">
+                    <span>@Loc["InvertSelection"]</span>
+                </button>
+                <button type="button" class="btn-tool-action" @onclick="ClearSelection" style="color: var(--text-secondary);">
+                    <span>@Loc["ClearSelection"]</span>
+                </button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="font-size: 0.88rem; color: var(--text-secondary);">
+                    <strong>@(selectedFile.PageCount - pagesToRemove.Count)</strong>
+                    <span>@Loc["PagesRemaining"]</span>
+                </div>
+
+                <button type="button" class="btn-primary-action" style="width: auto; padding: 0.55rem 1.6rem; font-size: 0.92rem; background: var(--danger);"
+                        disabled="@(isProcessing || pagesToRemove.Count == 0 || pagesToRemove.Count >= selectedFile.PageCount)"
+                        @onclick="ExecuteRemove">
+                    @if (isProcessing)
+                    {
+                        <span>@Loc["Processing"]</span>
+                    }
+                    else
+                    {
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>@Loc["RemovePagesButton"] (@pagesToRemove.Count)</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Range Expression Quick Input -->
+        <div style="margin-bottom: 1rem; padding: 0.75rem 1.15rem; background: var(--bg-page); border: 1px solid var(--border-subtle); border-radius: 10px; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <label style="font-weight: 600; font-size: 0.86rem; color: var(--text-primary); white-space: nowrap;">
+                @Loc["PagesToRemovePrompt"]
+            </label>
+            <input type="text" value="@rangeInputString" @onchange="OnRangeInputChanged" placeholder="@Loc["RangePlaceholder"]"
+                   class="compact-input" style="flex-grow: 1; min-width: 200px;" />
+        </div>
+
+        <!-- Large Document Navigator (Go to Page & Pagination) -->
+        <div class="large-pdf-nav-bar">
+            <div class="nav-bar-group">
+                <label style="font-weight: 600; color: var(--text-secondary);">@Loc["JumpToPage"]</label>
+                <input type="number" min="1" max="@selectedFile.PageCount" @bind="jumpPageNumber" class="compact-input" style="width: 72px;" />
+                <button type="button" class="btn-tool-action" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" @onclick="JumpToPageAsync">
+                    @Loc["JumpButton"]
+                </button>
+            </div>
+
+            <div class="nav-bar-group">
+                <span style="color: var(--text-secondary);">
+                    @Loc["ShowingPages"] <strong>@(ViewStartIndex + 1)–@(ViewEndIndex)</strong> @Loc["Of"] <strong>@selectedFile.PageCount</strong>
+                </span>
+
+                <button type="button" class="btn-tool-action" style="padding: 0.32rem 0.7rem; font-size: 0.8rem;"
+                        disabled="@(currentViewPage <= 1)" @onclick="PrevViewPage">
+                    @Loc["PrevView"]
+                </button>
+                <span style="font-weight: 600; padding: 0 0.25rem;">@currentViewPage / @TotalViewPages</span>
+                <button type="button" class="btn-tool-action" style="padding: 0.32rem 0.7rem; font-size: 0.8rem;"
+                        disabled="@(currentViewPage >= TotalViewPages)" @onclick="NextViewPage">
+                    @Loc["NextView"]
+                </button>
+
+                <label style="color: var(--text-secondary); margin-inline-start: 0.4rem;">@Loc["PerPage"]</label>
+                <select class="compact-input" value="@pageSize" @onchange="OnPageSizeChanged">
+                    <option value="24">24</option>
+                    <option value="48">48</option>
+                    <option value="96">96</option>
+                    <option value="0">@Loc["ShowAll"] (@selectedFile.PageCount)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Interactive Page Thumbnails Grid (Lazy Viewport Rendered) -->
+        <div id="pdf-thumbnails-grid" class="page-thumbnails-grid">
+            @for (int i = ViewStartIndex; i < ViewEndIndex; i++)
+            {
+                int pageNum = i + 1;
+                bool isMarked = pagesToRemove.Contains(pageNum);
+
+                <div @key="pageNum" id="remove-card-@pageNum"
+                     class="page-thumbnail-card clickable-card @(isMarked ? "marked-for-removal" : "")"
+                     @onclick="() => TogglePageRemoval(pageNum)">
+                    <div class="page-card-header">
+                        <span class="page-index-pill">
+                            @Loc["Page"] @pageNum
+                        </span>
+
+                        @if (isMarked)
+                        {
+                            <span class="page-removal-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                <span>@Loc["MarkedForRemoval"]</span>
+                            </span>
+                        }
+                    </div>
+
+                    <div class="preview-canvas-holder" data-pdf-page="@pageNum">
+                        <div class="preview-skeleton-pulse">
+                            <svg class="spin-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"></circle>
+                            </svg>
+                            <span>@Loc["LoadingPreviews"]</span>
+                        </div>
+
+                        <img class="page-thumbnail-canvas" alt="@Loc["Page"] @pageNum" />
+                    </div>
+
+                    <div class="page-card-actions">
+                        <button type="button" class="btn-rotate-mini"
+                                style="@(isMarked ? "background: var(--danger); color: #fff; border-color: var(--danger);" : "")">
+                            @if (isMarked)
+                            {
+                                <span>@Loc["ClickToRestore"]</span>
+                            }
+                            else
+                            {
+                                <span>@Loc["ClickToRemove"]</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <button type="button" class="btn-primary-action" style="background: var(--danger);"
+                disabled="@(isProcessing || pagesToRemove.Count == 0 || pagesToRemove.Count >= selectedFile.PageCount)"
+                @onclick="ExecuteRemove">
+            @if (isProcessing)
+            {
+                <span>@Loc["Processing"]</span>
+            }
+            else
+            {
+                <span>@Loc["RemovePagesButton"] (@pagesToRemove.Count @Loc["PagesSelectedCount"])</span>
+            }
+        </button>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="margin-top: 1.25rem; padding: 0.85rem 1.25rem; background: var(--danger-surface); border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <!-- Result Telemetry -->
+    @if (lastResult != null && lastResult.Success)
+    {
+        <div class="telemetry-card">
+            <div class="telemetry-header">
+                <span style="display: flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>@Loc["RemoveSuccess"]</span>
+                </span>
+                <span class="telemetry-speed">⚡ @lastResult.ElapsedMilliseconds @Loc["Milliseconds"]</span>
+            </div>
+            <div class="telemetry-summary">
+                @lastResult.Summary
+            </div>
+            <div class="telemetry-note">
+                @Loc["ZeroDiskIoNotice"]
+            </div>
+            <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn-primary-action" style="padding: 0.65rem 1.5rem; font-size: 0.92rem; width: auto;" @onclick="DownloadAgain">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>@Loc["DownloadResult"] (@lastResult.OutputFileName)</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DocumentItem? selectedFile;
+    private HashSet<int> pagesToRemove = new();
+    private string rangeInputString = string.Empty;
+    private int pageSize = 24;
+    private int currentViewPage = 1;
+    private int jumpPageNumber = 1;
+    private bool isProcessing = false;
+    private string? errorMessage;
+    private ExecutionResult? lastResult;
+    private bool needsThumbnailInit = false;
+
+    private int TotalViewPages => selectedFile == null || pageSize <= 0
+        ? 1
+        : Math.Max(1, (int)Math.Ceiling(selectedFile.PageCount / (double)pageSize));
+
+    private int ViewStartIndex => selectedFile == null || pageSize <= 0
+        ? 0
+        : Math.Clamp((currentViewPage - 1) * pageSize, 0, Math.Max(0, selectedFile.PageCount - 1));
+
+    private int ViewEndIndex => selectedFile == null
+        ? 0
+        : (pageSize <= 0 ? selectedFile.PageCount : Math.Min(selectedFile.PageCount, ViewStartIndex + pageSize));
+
+    protected override void OnInitialized()
+    {
+        Loc.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (needsThumbnailInit && selectedFile?.Data != null)
+        {
+            needsThumbnailInit = false;
+            try
+            {
+                await JS.InvokeVoidAsync("mnshor.initLazyPdfPreview", "pdf-thumbnails-grid", selectedFile.Data);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lazy thumbnail init notice: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        lastResult = null;
+        var file = e.File;
+
+        if (!file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Please select a valid PDF file.";
+            return;
+        }
+
+        try
+        {
+            using var memoryStream = new MemoryStream();
+            using var stream = file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024);
+            await stream.CopyToAsync(memoryStream);
+            var data = memoryStream.ToArray();
+
+            int pages = PdfEngine.GetPageCount(data);
+
+            selectedFile = new DocumentItem
+            {
+                FileName = file.Name,
+                ContentType = file.ContentType,
+                Size = file.Size,
+                PageCount = pages,
+                Data = data
+            };
+
+            pagesToRemove.Clear();
+            rangeInputString = string.Empty;
+            currentViewPage = 1;
+            jumpPageNumber = 1;
+            needsThumbnailInit = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading {file.Name}: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void TogglePageRemoval(int pageNum)
+    {
+        if (pagesToRemove.Contains(pageNum))
+        {
+            pagesToRemove.Remove(pageNum);
+        }
+        else
+        {
+            pagesToRemove.Add(pageNum);
+        }
+        UpdateRangeStringFromSet();
+    }
+
+    private void SelectAll()
+    {
+        if (selectedFile == null) return;
+        pagesToRemove.Clear();
+        for (int p = 1; p <= selectedFile.PageCount; p++) pagesToRemove.Add(p);
+        UpdateRangeStringFromSet();
+    }
+
+    private void SelectOddPages()
+    {
+        if (selectedFile == null) return;
+        pagesToRemove.Clear();
+        for (int p = 1; p <= selectedFile.PageCount; p += 2) pagesToRemove.Add(p);
+        UpdateRangeStringFromSet();
+    }
+
+    private void SelectEvenPages()
+    {
+        if (selectedFile == null) return;
+        pagesToRemove.Clear();
+        for (int p = 2; p <= selectedFile.PageCount; p += 2) pagesToRemove.Add(p);
+        UpdateRangeStringFromSet();
+    }
+
+    private void InvertSelection()
+    {
+        if (selectedFile == null) return;
+        var inverted = new HashSet<int>();
+        for (int p = 1; p <= selectedFile.PageCount; p++)
+        {
+            if (!pagesToRemove.Contains(p)) inverted.Add(p);
+        }
+        pagesToRemove = inverted;
+        UpdateRangeStringFromSet();
+    }
+
+    private void ClearSelection()
+    {
+        pagesToRemove.Clear();
+        rangeInputString = string.Empty;
+    }
+
+    private void PrevViewPage()
+    {
+        if (currentViewPage > 1) currentViewPage--;
+    }
+
+    private void NextViewPage()
+    {
+        if (currentViewPage < TotalViewPages) currentViewPage++;
+    }
+
+    private void OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            pageSize = newSize;
+            currentViewPage = 1;
+        }
+    }
+
+    private async Task JumpToPageAsync()
+    {
+        if (selectedFile == null) return;
+        int target = Math.Clamp(jumpPageNumber, 1, selectedFile.PageCount);
+        jumpPageNumber = target;
+
+        if (pageSize > 0)
+        {
+            currentViewPage = ((target - 1) / pageSize) + 1;
+        }
+
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("mnshor.scrollToCard", $"remove-card-{target}");
+        }
+        catch { }
+    }
+
+    private void UpdateRangeStringFromSet()
+    {
+        if (pagesToRemove.Count == 0)
+        {
+            rangeInputString = string.Empty;
+            return;
+        }
+
+        var sorted = pagesToRemove.OrderBy(p => p).ToList();
+        var ranges = new List<string>();
+
+        int start = sorted[0];
+        int prev = start;
+
+        for (int i = 1; i < sorted.Count; i++)
+        {
+            if (sorted[i] == prev + 1)
+            {
+                prev = sorted[i];
+            }
+            else
+            {
+                ranges.Add(start == prev ? $"{start}" : $"{start}-{prev}");
+                start = sorted[i];
+                prev = start;
+            }
+        }
+        ranges.Add(start == prev ? $"{start}" : $"{start}-{prev}");
+        rangeInputString = string.Join(", ", ranges);
+    }
+
+    private void OnRangeInputChanged(ChangeEventArgs e)
+    {
+        rangeInputString = e.Value?.ToString() ?? string.Empty;
+        if (selectedFile == null) return;
+
+        pagesToRemove.Clear();
+        if (!string.IsNullOrWhiteSpace(rangeInputString))
+        {
+            var parts = rangeInputString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var part in parts)
+            {
+                if (part.Contains('-'))
+                {
+                    var limits = part.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    if (limits.Length == 2 && int.TryParse(limits[0], out int s) && int.TryParse(limits[1], out int end))
+                    {
+                        for (int p = Math.Min(s, end); p <= Math.Max(s, end); p++)
+                        {
+                            if (p >= 1 && p <= selectedFile.PageCount) pagesToRemove.Add(p);
+                        }
+                    }
+                }
+                else if (int.TryParse(part, out int single) && single >= 1 && single <= selectedFile.PageCount)
+                {
+                    pagesToRemove.Add(single);
+                }
+            }
+        }
+    }
+
+    private void ResetFile()
+    {
+        selectedFile = null;
+        pagesToRemove.Clear();
+        rangeInputString = string.Empty;
+        lastResult = null;
+        errorMessage = null;
+        needsThumbnailInit = false;
+        _ = JS.InvokeVoidAsync("mnshor.disposePdfPreview");
+    }
+
+    private async Task ExecuteRemove()
+    {
+        if (selectedFile == null) return;
+
+        if (pagesToRemove.Count == 0)
+        {
+            errorMessage = Loc["NoPagesSelected"];
+            return;
+        }
+
+        if (pagesToRemove.Count >= selectedFile.PageCount)
+        {
+            errorMessage = Loc["CannotRemoveAllPages"];
+            return;
+        }
+
+        errorMessage = null;
+        isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await PdfEngine.RemovePagesAsync(selectedFile, pagesToRemove);
+
+            if (lastResult.Success)
+            {
+                await DownloadResult(lastResult);
+            }
+            else
+            {
+                errorMessage = lastResult.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadAgain()
+    {
+        if (lastResult != null && lastResult.Success)
+        {
+            await DownloadResult(lastResult);
+        }
+    }
+
+    private async Task DownloadResult(ExecutionResult result)
+    {
+        await JS.InvokeVoidAsync("mnshor.downloadFileFromByteArray", result.OutputFileName, result.ContentType, result.OutputData);
+    }
+
+    public void Dispose()
+    {
+        Loc.OnChange -= StateHasChanged;
+    }
+}
