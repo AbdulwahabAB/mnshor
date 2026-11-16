@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Self-contained publish must bundle the November 2026 runtime, not an older SDK default. -->
+    <RuntimeFrameworkVersion>9.0.23</RuntimeFrameworkVersion>
+  </PropertyGroup>
+</Project>

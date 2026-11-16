@@ -1,10 +1,11 @@
 window.mnshor = window.mnshor || {};
 
-if (window.pdfjsLib) {
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
+if (window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.mjs';
 }
 
 window.mnshor._pdfDoc = null;
+window.mnshor._pdfLoadingTask = null;
 window.mnshor._thumbCache = new Map();
 window.mnshor._renderingPages = new Set();
 window.mnshor._intersectionObserver = null;
@@ -46,9 +47,14 @@ window.mnshor.disposePdfPreview = function () {
         window.mnshor._mutationObserver.disconnect();
         window.mnshor._mutationObserver = null;
     }
-    if (window.mnshor._pdfDoc) {
-        try { window.mnshor._pdfDoc.destroy(); } catch { }
-        window.mnshor._pdfDoc = null;
+    const loadingTask = window.mnshor._pdfLoadingTask
+        || (window.mnshor._pdfDoc && window.mnshor._pdfDoc.loadingTask)
+        || null;
+    window.mnshor._pdfLoadingTask = null;
+    window.mnshor._pdfDoc = null;
+    if (loadingTask && typeof loadingTask.destroy === 'function') {
+        // pdf.js 6 removed PDFDocumentProxy.destroy(); the loading task owns teardown.
+        loadingTask.destroy().catch(() => { });
     }
     window.mnshor._thumbCache.clear();
     window.mnshor._renderingPages.clear();
@@ -85,6 +91,7 @@ window.mnshor._renderSinglePage = async function (pageNum) {
 
         const context = canvas.getContext('2d');
         await page.render({
+            canvas: canvas,
             canvasContext: context,
             viewport: viewport
         }).promise;
@@ -122,19 +129,34 @@ window.mnshor.syncLazyThumbnails = function (containerId) {
 
 window.mnshor.initLazyPdfPreview = async function (containerId, byteArray) {
     if (!window.pdfjsLib) {
-        console.error('PDF.js library is not loaded');
-        return;
+        const ready = await new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve(false), 10000);
+            window.addEventListener('mnshor-pdfjs-ready', () => {
+                clearTimeout(timeout);
+                resolve(!!window.pdfjsLib);
+            }, { once: true });
+        });
+        if (!ready) {
+            console.error('PDF.js library is not loaded');
+            return;
+        }
     }
 
     if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.mjs';
     }
 
     window.mnshor.disposePdfPreview();
 
     try {
         const uint8 = new Uint8Array(byteArray);
-        const loadingTask = window.pdfjsLib.getDocument({ data: uint8 });
+        // pdf.js 6.5.438 compiles out the CVE-2024-4367 eval/Function font path,
+        // so DocumentInitParameters no longer has isEvalSupported.
+        const loadingTask = window.pdfjsLib.getDocument({
+            data: uint8,
+            wasmUrl: window.mnshor.pdfWasmUrl || '/js/pdfjs/wasm/'
+        });
+        window.mnshor._pdfLoadingTask = loadingTask;
         window.mnshor._pdfDoc = await loadingTask.promise;
 
         window.mnshor._intersectionObserver = new IntersectionObserver((entries) => {

@@ -42,7 +42,7 @@ jobs:
       - name: Setup .NET 9.0
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '9.0.321'
 
       - name: Resolve Version, Stage & Tag Metadata
         id: meta

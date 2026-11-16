@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.StaticFiles;
 using Mnshor.Components;
 using Mnshor.Engines;
 using Mnshor.Services;
@@ -57,7 +58,13 @@ if (hasHttpsEndpoint)
 {
     app.UseHttpsRedirection();
 }
-app.UseStaticFiles();
+var contentTypes = new FileExtensionContentTypeProvider();
+contentTypes.Mappings[".mjs"] = "text/javascript";
+contentTypes.Mappings[".wasm"] = "application/wasm";
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = contentTypes
+});
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
